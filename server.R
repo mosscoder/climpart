@@ -8,6 +8,70 @@ server <- shinyServer(function(input, output, session) {
              closeOnClickOutside = TRUE,
              html = T)
   
+  observeEvent(input$moreInfo, {
+    showModal(modalDialog(HTML('This sampling tool is intended for use 
+                               by USGS personnel, academia, the native seed industry, and the 
+                               public. The analyses presented here are  
+                               based upon the methods described in 
+                               <a href="https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1002/eap.1505">Doherty et al. (2017)</a>.
+                               Please send questions, 
+                               comments, suggestions for improvements, and error reports via 
+                               email to USGS - Southwest Biological Science Center c/o Kyle 
+                               Doherty (<a href="mailto:kyledaviddoherty@gmail.com">kyledaviddoherty@gmail.com</a>). 
+                               The current web location for this tool is temporary and it will be 
+                               hosted on a USGS server as soon as a suitable one can be located.<br><br>
+                               Written by Kyle Doherty, U.S. Geological 
+                               Survey, Southwest Biological Science Center, Flagstaff, Arizona. Written in the programming 
+                               language R (R Core Team (2015). R: A language and environment for 
+                               statistical computing. R Foundation for Statistical Computing,
+                               Vienna, Austria. URL http://www.R-project.org/).<br><br>
+                               
+                               Disclaimer: Although this program has been used by the USGS, no 
+                               warranty, expressed or implied, is made by the USGS or the United 
+                               States Government as to the accuracy and functioning of the 
+                               program and related program material nor shall the fact of 
+                               distribution constitute any such warranty, and no responsibility is 
+                               assumed by the USGS in connection therewith.
+                               '
+    ),
+    easyClose = TRUE,
+    footer = HTML("<button type='button' class='btn btn-success' data-dismiss='modal'>OK</button>")
+    ))
+  })
+  
+  output$instruct <- renderText('The purpose of this app is to aid sampling efforts along climate gradients for a 
+                                geographic region of interest.  Examples of potential uses of this tool include: 
+                                sampling plant materials for common garden studies, establishing common garden 
+                                arrays, establishing vegetation transects, or banking seed for native plant 
+                                conservation. Analyses are conducted on the Bioclim 
+                                (http://www.worldclim.org/bioclim) dataset for the extent of 15 to 60 degrees 
+                                latitude and -135 to -45 degrees longitude. We chose to incorporate seven of these 
+                                variables that together capture unique axes of multivariate climate space, including: 
+                                mean annual temperature, diurnal range, temperature seasonality, temperature of 
+                                warmest quarter, mean annual precipitation, precipitation seasonality, and 
+                                precipitation of warmest quarter. 
+                                To operate the app, the user may input a lat/long bounding box with the supplied 
+                                slider bars or a spatial polygon. They then specify the number of partitions (as many as 50), click the 
+                                "Generate Partitions" button, and the app then uses cluster analysis to group the user-
+                                defined climate space into the desired number of partitions. Within each partition 
+                                the app identifies the map cell that corresponds to the multivariate median, or 
+                                medoid, which we refer to as a climate center. After calculating these points, the app 
+                                then assigns each map cell to the climate center closest in climate space and maps 
+                                these assignments as regions of differing colors. Also reported are the 
+                                corresponding coordinates and Bioclim data for each of the climate centers, as well 
+                                as the distributions of their assignments. 
+                                The user can then download and explore the underlying rasters, climate center data, 
+                                and within-assignment distributions for offline use. To reproduce the aesthetics of the 
+                                mapping feature, set high values of the simval.tif as black and low values as white, 
+                                then overlay the center.assignment.tif, setting it to ~50% transparency, with values 
+                                as categorical, each value a contrasting color.')
+  
+  getPage<-function() {
+    return(includeHTML("https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html"))
+  }
+  
+  output$inc<-renderUI({getPage()})
+  
   na.pts <- reactive({
     
     raw.pts <- read_feather("naFeatherMercator")
@@ -712,62 +776,6 @@ server <- shinyServer(function(input, output, session) {
     contentType = "application/zip"
   )
   
-  observeEvent(input$moreInfo, {
-    showModal(modalDialog(HTML('This sampling tool is intended for use 
-                               by USGS personnel, academia, the native seed industry, and the 
-                               public. The analyses presented here are  
-                               based upon the methods described in 
-                               <a href="https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1002/eap.1505">Doherty et al. (2017)</a>.
-                               Please send questions, 
-                               comments, suggestions for improvements, and error reports via 
-                               email to USGS - Southwest Biological Science Center c/o Kyle 
-                               Doherty (<a href="mailto:kyledaviddoherty@gmail.com">kyledaviddoherty@gmail.com</a>). 
-                               The current web location for this tool is temporary and it will be 
-                               hosted on a USGS server as soon as a suitable one can be located.<br><br>
-                               Written by Kyle Doherty, U.S. Geological 
-                               Survey, Southwest Biological Science Center, Flagstaff, Arizona. Written in the programming 
-                               language R (R Core Team (2015). R: A language and environment for 
-                               statistical computing. R Foundation for Statistical Computing,
-                               Vienna, Austria. URL http://www.R-project.org/).<br><br>
-                               
-                               Disclaimer: Although this program has been used by the USGS, no 
-                               warranty, expressed or implied, is made by the USGS or the United 
-                               States Government as to the accuracy and functioning of the 
-                               program and related program material nor shall the fact of 
-                               distribution constitute any such warranty, and no responsibility is 
-                               assumed by the USGS in connection therewith.
-                               '
-    ),
-    easyClose = TRUE,
-    footer = HTML("<button type='button' class='btn btn-success' data-dismiss='modal'>OK</button>")
-    ))
-  })
   
-  output$instruct <- renderText('The purpose of this app is to aid sampling efforts along climate gradients for a 
-                                geographic region of interest.  Examples of potential uses of this tool include: 
-                                sampling plant materials for common garden studies, establishing common garden 
-                                arrays, establishing vegetation transects, or banking seed for native plant 
-                                conservation. Analyses are conducted on the Bioclim 
-                                (http://www.worldclim.org/bioclim) dataset for the extent of 15 to 60 degrees 
-                                latitude and -135 to -45 degrees longitude. We chose to incorporate seven of these 
-                                variables that together capture unique axes of multivariate climate space, including: 
-                                mean annual temperature, diurnal range, temperature seasonality, temperature of 
-                                warmest quarter, mean annual precipitation, precipitation seasonality, and 
-                                precipitation of warmest quarter. 
-                                To operate the app, the user may input a lat/long bounding box with the supplied 
-                                slider bars or a spatial polygon. They then specify the number of partitions (as many as 50), click the 
-                                "Generate Partitions" button, and the app then uses cluster analysis to group the user-
-                                defined climate space into the desired number of partitions. Within each partition 
-                                the app identifies the map cell that corresponds to the multivariate median, or 
-                                medoid, which we refer to as a climate center. After calculating these points, the app 
-                                then assigns each map cell to the climate center closest in climate space and maps 
-                                these assignments as regions of differing colors. Also reported are the 
-                                corresponding coordinates and Bioclim data for each of the climate centers, as well 
-                                as the distributions of their assignments. 
-                                The user can then download and explore the underlying rasters, climate center data, 
-                                and within-assignment distributions for offline use. To reproduce the aesthetics of the 
-                                mapping feature, set high values of the simval.tif as black and low values as white, 
-                                then overlay the center.assignment.tif, setting it to ~50% transparency, with values 
-                                as categorical, each value a contrasting color.')
   
   })
