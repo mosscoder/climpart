@@ -54,9 +54,9 @@ ui <- fluidPage(
                           tabPanel("Climate Center Data", dataTableOutput("centerTable")),
                           tabPanel("Within-Assignment Distributions", id="box", plotOutput("boxPlot", height=2000) %>% withSpinner( size = 20)),
                           tabPanel("Background and Use", id="background", textOutput('instruct')),
-                          tabPanel("Run Offline", id="offline", htmlOutput("inc"))
-                                   #tags$iframe(src='https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html',
-                                    #           width = "80%", height ="700px"))
+                          tabPanel("Run Offline", id="offline",# htmlOutput("inc"))
+                                   tags$iframe(src='https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html',
+                                               width = "100%", height = "1000px", style="border:0"))
               ))
     
     )

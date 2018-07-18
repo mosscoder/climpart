@@ -66,11 +66,11 @@ server <- shinyServer(function(input, output, session) {
                                 then overlay the center.assignment.tif, setting it to ~50% transparency, with values 
                                 as categorical, each value a contrasting color.')
   
-  getPage<-function() {
-    return(includeHTML("https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html"))
-  }
+  #getPage<-function() {
+   # return(includeHTML("https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html"))
+  #}
   
-  output$inc<-renderUI({getPage()})
+  #output$inc<-renderUI({getPage()})
   
   na.pts <- reactive({
     
