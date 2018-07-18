@@ -1,5 +1,5 @@
 server <- shinyServer(function(input, output, session) {
-  
+  #test hihi!
   shinyalert(title = 'Welcome!',
              text = 'App may take a minute or more to initialize, please wait',
              type = 'info',
