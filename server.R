@@ -1,8 +1,12 @@
 server <- shinyServer(function(input, output, session) {
   shinyalert(title = 'Welcome!',
-             text = 'App may take a minute or more to initialize, please wait',
+             text = HTML('App may take a minute or more to initialize, please wait<br><br>
+                          Want to run the app offline?<br><br>
+                         <a href="http://htmlpreview.github.io/?https://github.com/mosscoder/climpart/blob/master/offlineInstructions.html">
+                         Click here for more info</a>.'),
              type = 'info',
-             closeOnClickOutside = TRUE)
+             closeOnClickOutside = TRUE,
+             html = T)
   
   na.pts <- reactive({
     
