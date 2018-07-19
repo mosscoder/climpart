@@ -1,10 +1,12 @@
 server <- shinyServer(function(input, output, session) {
-  shinyalert(title = 'Welcome!',
-             text = HTML('App may take a minute or more to initialize, please wait<br><br>
-                          Want to run the app offline?<br><br>
+  shinyalert(title = 'Welcome to the Climpart App!',
+             text = HTML('App is initialized!<br><br>
+                          For a detailed explanation of the underlying analyses, see
+                          <a href="https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1002/eap.1505">Doherty et al. (2017)</a>.<br><br>
+                          Want to run the app offline?<br>
                          <a href="https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html">
                          Click here for more info</a>.'),
-             type = 'info',
+             type = 'success',
              closeOnClickOutside = TRUE,
              html = T)
   
@@ -66,57 +68,13 @@ server <- shinyServer(function(input, output, session) {
                                 then overlay the center.assignment.tif, setting it to ~50% transparency, with values 
                                 as categorical, each value a contrasting color.')
   
-  #getPage<-function() {
-   # return(includeHTML("https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html"))
-  #}
-  
-  #output$inc<-renderUI({getPage()})
-  
-  na.pts <- reactive({
-    
-    raw.pts <- read_feather("naFeatherMercator")
-    na.xy <- xyFromCell(leaf.template, raw.pts$cell)
-    na.pts <- data.frame(cell = raw.pts$cell,
-                         x = na.xy[,1],
-                         y = na.xy[,2],
-                         raw.pts[,2:8])
-    
-    if(!is.null(na.pts)){
-      shinyalert(title = 'App initialized!',
-                                      text = '',
-                                      type = 'success',
-                                      closeOnClickOutside = TRUE)
-      }
-    
-    rm(raw.pts)
-    rm(na.xy)
-    gc()
-
-    
-    na.pts
-  })
-  
-  output$loading <- renderUI({
-    if(is.null(na.pts())){
-      helpText("App takes ~30 seconds to initialize, please wait.")
-    }else{
-      helpText("App ready!")
-    }
-  })
-  
-  unscaled <- reactive({
+  climClip <- eventReactive(input$goButton,{
     
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Extracting climate data for user extent", value = 0.1)
     
-    input$goButton
-    
-    if(input$goButton[1]==0){
-      return()
-    }
-    
-    isolate(if(input$boundSelect == "slider"){ #extent set by sliders
+    if(input$boundSelect == "slider"){ 
       ext <- extent(input$lon.range[1],
                     input$lon.range[2],
                     input$lat.range[1],
@@ -124,66 +82,93 @@ server <- shinyServer(function(input, output, session) {
       
       extPoly <- as(ext, "SpatialPolygons")
       sp::proj4string(extPoly) <- "+init=epsg:4326"
-      extMercator <- extent(sp::spTransform(extPoly, CRS("+init=epsg:3857")))
+      extMercator <- spTransform(extPoly, CRS("+init=epsg:3857"))
       
-      box.crop <- na.pts() %>% filter(x > extMercator@xmin[1] & 
-                                        x < extMercator@xmax[1] & 
-                                        y > extMercator@ymin[1] &
-                                        y < extMercator@ymax[1])
+      polyDF <- SpatialPolygonsDataFrame(extMercator, data.frame(f=0), match.ID = F)
       
-      cropped.stack <- box.crop
       
-      if(nrow(cropped.stack) < input$cluster.num){
-        shinyalert(title = 'Invalid region of interest!',
-                   text = 'Please select regions containing land masses 
-                   within the bounds of -135 to -45 degrees longitude and 15 to 60 degrees latitude. ',
-                   type = 'error')
-      }
+      #temp.folder <- tempdir()
+      writeOGR(polyDF, temp.folder, "userPoly", driver="ESRI Shapefile", overwrite_layer = T)
       
-    })
+      shpLoc <- path.expand(paste0(temp.folder,'/userPoly.shp'))
+      rasLoc <- path.expand('./climateMerc.tif')
+      getwd()
+      gdalwarp(srcnodata=-9999, 
+               dstnodata=-9999,
+               overwrite = T,
+               crop_to_cutline=T, 
+               cutline = shpLoc,
+               rasLoc,
+               'clipped.tif')
+      
+    }
     
-    isolate(if(input$boundSelect == "poly"){ #extent set by poly
+    if(input$boundSelect == "poly"){ #extent set by poly
       
-      temp.folder <- tempdir()
+      
+      file.remove(paste0(temp.folder,"/userPoly.shp"))
+      
       inFile <- input$boundFile2
       unzip(zipfile = inFile$datapath, exdir = temp.folder) #specify user poly here
       shp.file.dir <- list.files(path = temp.folder, pattern = "\\.shp$")
       shp.layer <- strsplit(shp.file.dir, ".shp")[[1]]
       
-      poly <- readOGR(dsn = paste(temp.folder,"/",shp.file.dir, sep=""), layer=shp.layer)
-      file.remove(paste(temp.folder,"/",shp.file.dir, sep=""))
+      poly <- readOGR(dsn = path.expand(paste0(temp.folder,"/",shp.file.dir)), layer=shp.layer)
+      file.remove(paste0(temp.folder,"/",shp.file.dir))
       
       poly.trans <- spTransform(gUnionCascaded(poly), CRS("+init=epsg:3857"))
       
-      poly.cell <- data.frame(cellFromPolygon(leaf.template, poly.trans))
+      polyDF <- SpatialPolygonsDataFrame(poly.trans, data.frame(f=0), match.ID = F)
       
-      cropped.stack <- na.pts() %>% filter(cell %in% poly.cell[,1])
+      temp.folder <- tempdir()
+      writeOGR(polyDF, temp.folder, "userPoly", driver="ESRI Shapefile", overwrite_layer = T)
       
-      if(nrow(cropped.stack) < input$cluster.num){
-        shinyalert(title = 'Invalid region of interest!',
-                   text = 'Please select regions containing land masses 
-                   within the bounds of -135 to -45 degrees longitude and 15 to 60 degrees latitude. ',
-                   type = 'error')
-      }
-      
-    })
-    
-    colnames(cropped.stack) <- colnames(na.pts())
-    cropped.stack
-    
-    }) 
-  
-  map.crop <- reactive({
-    
-    input$goButton
-    
-    if(input$goButton[1]==0){
-      return()
+      shpLoc <- path.expand(paste0(temp.folder,'/userPoly.shp'))
+      rasLoc <- path.expand('./climateMerc.tif')
+      getwd()
+      gdalwarp(srcnodata=-9999, 
+               dstnodata=-9999,
+               overwrite = T,
+               crop_to_cutline=T, 
+               cutline = shpLoc,
+               rasLoc,
+               'clipped.tif')
     }
     
+    stack('clipped.tif')
+    
+    })
+  
+  unscaled <- eventReactive(input$goButton,{
     progress <- shiny::Progress$new()
     on.exit(progress$close())
-    progress$set(message = "Scaling climate data", value = 0.25)
+    progress$set(message = "Formatting selection", value = 0.15)
+    
+    clip <- climClip()
+    
+    clipMat <- as.data.frame(clip)
+    cell <- 1:ncell(clip)
+    
+    colnames(clipMat) <- c("MAT","DiurnalRange","TSeasonality",
+                           "TWettestQtr","MAP","PSeasonality","PWarmestQtr")
+    
+    xy <- xyFromCell(clip, cell)
+    roiDF <- na.omit(data.frame(cell = cell, x = xy[,1], y = xy[,2], clipMat))
+    
+    if(nrow(roiDF) < input$cluster.num){
+      shinyalert(title = 'Invalid region of interest!',
+                 text = 'Please select regions containing land masses 
+                 within the bounds of -135 to -45 degrees longitude and 15 to 60 degrees latitude. ',
+                 type = 'error')
+    }
+    roiDF
+    
+  })
+  
+  map.crop <- eventReactive(input$goButton,{
+    progress <- shiny::Progress$new()
+    on.exit(progress$close())
+    progress$set(message = "Scaling data", value = 0.25)
     
     unsc <- unscaled()
     
@@ -191,19 +176,13 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
-  max.find <- reactive({
+  max.find <- eventReactive(input$goButton,{
     
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Calculating maximum climate distance", value = 0.3)
     
-    input$goButton
-    
-    if(input$goButton[1]==0){
-      return()
-    }
-    
-    cropped.stack <- isolate(map.crop())
+    cropped.stack <- map.crop()
     set.seed(123)
     while.maxxer <- function(){
       
@@ -237,20 +216,14 @@ server <- shinyServer(function(input, output, session) {
     extent.max
   }) 
   
-  medoids <- reactive({
+  medoids <- eventReactive(input$goButton,{
     set.seed(123)
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Clustering user extent", value = 0.4)
     
-    input$goButton
-    
-    if(input$goButton[1]==0){
-      return()
-    }
-    
-    cropped.stack <- isolate(map.crop())
-    extent.max <- isolate(max.find())
+    cropped.stack <- map.crop()
+    extent.max <- max.find()
     
     kmeans.medoid.reps <- function(cluster, rep){
       kmeans.medoids.solutions <- function(cluster){
@@ -300,7 +273,7 @@ server <- shinyServer(function(input, output, session) {
       return(out)
     }
     
-    kmeans.medoids.reps <- isolate(data.frame(do.call(rbind, lapply(FUN=kmeans.medoid.reps, X=1:5, cluster=input$cluster.num)))) #input cluster number here
+    kmeans.medoids.reps <- data.frame(do.call(rbind, lapply(FUN=kmeans.medoid.reps, X=1:5, cluster=input$cluster.num))) #input cluster number here
     
     best.medoids <- subset(kmeans.medoids.reps, kmeans.medoids.reps$mean.cell.value == max(kmeans.medoids.reps$mean.cell.value ))
     rep.screen <- unique(best.medoids$rep)[1]
@@ -309,21 +282,15 @@ server <- shinyServer(function(input, output, session) {
     best.medoids
   }) 
   
-  medprint <- reactive({
+  medprint <- eventReactive(input$goButton,{
     
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Identifying best climate centers", value = 0.5)
     
-    input$goButton
-    
-    if(input$goButton[1]==0){
-      return()
-    }
-    
-    cropped.stack <- isolate(map.crop())
-    extent.max <- isolate(max.find())
-    best.medoids <- isolate(medoids())
+    cropped.stack <- map.crop()
+    extent.max <- max.find()
+    best.medoids <- medoids()
     
     medoid.print <- data.frame(paste("Center", 1:nrow(best.medoids)),subset(unscaled(), cell %in% best.medoids$cell))
     colnames(medoid.print)[1] <- "Climate Center"
@@ -341,23 +308,16 @@ server <- shinyServer(function(input, output, session) {
     medoid.print
   }) 
   
-  sim.calcs <- reactive({
+  sim.calcs <- eventReactive(input$goButton,{
     
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Mapping climate similarity", value = 0.6)
-    
-    input$goButton
-    
-    if(input$goButton[1]==0){
-      return()
-    }
-    
-    
-    cropped.stack <- isolate(map.crop())
-    extent.max <- isolate(max.find())
-    best.medoids <- isolate(medoids())
-    medoid.print <- isolate(medprint())
+
+    cropped.stack <- map.crop()
+    extent.max <- max.find()
+    best.medoids <- medoids()
+    medoid.print <- medprint()
     
     maps.clust.fun <- function(clim.vals){
       col.dat <- clim.vals 
@@ -408,7 +368,7 @@ server <- shinyServer(function(input, output, session) {
                                 proj4string=CRS('+init=epsg:4326'))
       click.trans <- spTransform(click.xy, '+init=epsg:3857') 
       
-      map.cell <- cellFromXY(leaf.template, click.trans)
+      map.cell <- cellFromXY(climClip(), click.trans)
     }
     
     center <- subset(map.vals, cell == map.cell, select=c("accession","clim.sim"))
@@ -434,16 +394,10 @@ server <- shinyServer(function(input, output, session) {
     out
   })
   
-  box.react <- reactive({
-    input$goButton
+  box.react <- eventReactive(input$goButton,{
     
-    if(input$goButton[1]==0){
-      return()
-    }
-    
-    map.vals <- isolate(sim.calcs())
-    medoid.print <- isolate(medprint())
-    
+    map.vals <- sim.calcs()
+    medoid.print <- medprint()
     
     sub.vals <- withProgress(message="Extracting data for center assignments", value=0.91, 
                              filter(unscaled(), cell %in% map.vals$cell))
@@ -531,37 +485,29 @@ server <- shinyServer(function(input, output, session) {
     withProgress(message="Generating box and whisker plots", value=0.97, box)
   })
   
-  rasStack <- reactive({
-    input$goButton
-    
-    if(input$goButton[1]==0){
-      return()
-    }
-    
-    cropped.stack <- isolate(map.crop())
-    extent.max <- isolate(max.find())
-    best.medoids <- isolate(medoids())
-    map.vals <- isolate(sim.calcs())
-    medoid.print <- isolate(medprint())
+  rasStack <- eventReactive(input$goButton,{
+
+    cropped.stack <- map.crop()
+    extent.max <- max.find()
+    best.medoids <- medoids()
+    map.vals <- sim.calcs()
+    medoid.print <- medprint()
     
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Projecting rasters", value = 0.7)
     
-    new.template <- crop(leaf.template, extent(min(map.vals$x)-5000, 
-                                               max(map.vals$x)+5000,
-                                               min(map.vals$y)-5000,
-                                               max(map.vals$y)+5000))
-    
+    leaf.template <- raster(nrow=nrow(climClip()), ncol = ncol(climClip()),
+                            xmn=xmin(climClip()), xmx= xmax(climClip()),
+                            ymn=ymin(climClip()), ymx=ymax(climClip()),
+                            resolution=c(927.6624, 927.6624),
+                            crs="+init=epsg:3857")
     
     clim.ras <- leaf.template
     bound.ras <- leaf.template
     
     values(clim.ras)[map.vals$cell] <- round(map.vals$clim.sim*100)
     values(bound.ras)[map.vals$cell] <- as.integer(map.vals$accession)
-    
-    clim.ras <- crop(clim.ras, new.template)
-    bound.ras <-crop(bound.ras, new.template)
     
     dataType(clim.ras) <- "INT1U"
     dataType(bound.ras) <- "INT1U"
@@ -570,14 +516,14 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
-  palettes <- reactive({
-    cropped.stack <- isolate(map.crop())
-    extent.max <- isolate(max.find())
-    best.medoids <- isolate(medoids())
-    map.vals <- isolate(sim.calcs())
-    medoid.print <- isolate(medprint())
-    clim.ras <- isolate(rasStack()[[1]])
-    bound.ras <- isolate(rasStack()[[2]])
+  palettes <- eventReactive(input$goButton,{
+    cropped.stack <- map.crop()
+    extent.max <- max.find()
+    best.medoids <- medoids()
+    map.vals <- sim.calcs()
+    medoid.print <- medprint()
+    clim.ras <- rasStack()[[1]]
+    bound.ras <- rasStack()[[2]]
     clim.ras <- rasStack()[[1]]
     bound.ras <- rasStack()[[2]]
     
@@ -638,17 +584,20 @@ server <- shinyServer(function(input, output, session) {
     
     grays <- withProgress(value=0.8, message="Assigning Aesthetics",gray.colors(n=10, start = 1, end = 0, alpha = NULL))
     
-    sim.pal <- withProgress(value=0.90, message="Assigning Aesthetics",colorNumeric(grays, values(clim.ras), 
-                                                                                    na.color = "transparent"))
+    # sim.pal <- withProgress(value=0.90, message="Assigning Aesthetics",colorNumeric(grays, values(clim.ras), 
+    #                                                                                 na.color = 'transparent'))
+    
+    sim.pal <- withProgress(value=0.90, message="Assigning Aesthetics",colorNumeric(grays, minValue(clim.ras):maxValue(clim.ras), 
+                                                                                    na.color = 'transparent'))
+    
     
     ras.zone.pal <- withProgress(value=0.95, message="Assigning Aesthetics",colorFactor(palette, 
-                                                                                        domain=factor(values(bound.ras)),
-                                                                                        na.color = "transparent"))
+                                                                                        domain=factor(1:nrow(medoid.print)),
+                                                                                        na.color = 'transparent'))
     c(sim.pal, ras.zone.pal)
   })
   
   output$leaf <- renderLeaflet({
-    
     input$goButton
     
     if(input$goButton[1]==0){
@@ -684,10 +633,10 @@ server <- shinyServer(function(input, output, session) {
                        options = layersControlOptions(collapsed = F),
                        position=ifelse(nrow(medoid.print) > 30, "topleft", "topright")) %>%
       addLegend("topright",pal = ras.zone.pal,
-                values = factor(values(bound.ras)),
+                values = factor(1:nrow(medoid.print)),
                 title ="Assignment") %>%
       addLegend(ifelse(nrow(medoid.print) > 20, "bottomleft", "topright"),
-                pal = sim.pal, values = values(clim.ras),
+                pal = sim.pal, values = minValue(clim.ras):maxValue(clim.ras),
                 title ="Climate<br>Similarity", bins = 5)
     
     m
@@ -775,7 +724,5 @@ server <- shinyServer(function(input, output, session) {
     },
     contentType = "application/zip"
   )
-  
-  
   
   })

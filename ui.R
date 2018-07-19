@@ -7,11 +7,6 @@ ui <- fluidPage(
                  fluidRow(
                    img(src="https://storage.googleapis.com/seedmapper_dat/usgs.log.png", height=81, width=180),
                    
-                   uiOutput("loading"),
-                   
-                   conditionalPanel("!output.loading", 
-                                    HTML('<b><font color="red">App may take a minute or more to initialize, please wait.</font></b>')),
-                   
                    selectInput("boundSelect", label = ("How would you like to define your area of interest?"), 
                                choices = list("Lat/Long Slider Bars" = "slider", 
                                               "Spatial Polygon" = "poly"),
@@ -25,13 +20,13 @@ ui <- fluidPage(
                    conditionalPanel(condition = "input.boundSelect == 'slider'",
                                     sliderInput("lat.range",
                                                 label = "Latitude Extent", 
-                                                min = 15, max = 60, step = 0.1,
+                                                min = 15, max = 60, step = 0.25,
                                                 value=c(32,42))),
                    
                    conditionalPanel(condition = "input.boundSelect == 'slider'",  
                                     sliderInput("lon.range",
                                                 label = "Longitude Extent", 
-                                                min =-135, max = -45, step = 0.1,
+                                                min =-135, max = -45, step = 0.25,
                                                 value=c(-115,-105))),
                    
                    sliderInput("cluster.num", label = "Number of climate paritions:", 
@@ -54,7 +49,7 @@ ui <- fluidPage(
                           tabPanel("Climate Center Data", dataTableOutput("centerTable")),
                           tabPanel("Within-Assignment Distributions", id="box", plotOutput("boxPlot", height=2000) %>% withSpinner( size = 20)),
                           tabPanel("Background and Use", id="background", textOutput('instruct')),
-                          tabPanel("Run Offline", id="offline",# htmlOutput("inc"))
+                          tabPanel("Run Offline", id="offline",
                                    tags$iframe(src='https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html',
                                                width = "100%", height = "1000px", style="border:0"))
               ))
