@@ -20,13 +20,13 @@ ui <- fluidPage(
                    conditionalPanel(condition = "input.boundSelect == 'slider'",
                                     sliderInput("lat.range",
                                                 label = "Latitude Extent", 
-                                                min = 15, max = 60, step = 0.25,
+                                                min = 7, max = 83, step = 0.5,
                                                 value=c(32,42))),
                    
                    conditionalPanel(condition = "input.boundSelect == 'slider'",  
                                     sliderInput("lon.range",
                                                 label = "Longitude Extent", 
-                                                min =-135, max = -45, step = 0.25,
+                                                min =-168, max = -52, step = 0.5,
                                                 value=c(-115,-105))),
                    
                    sliderInput("cluster.num", label = "Number of climate paritions:", 

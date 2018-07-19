@@ -1,9 +1,9 @@
 server <- shinyServer(function(input, output, session) {
   shinyalert(title = 'Welcome to the Climpart App!',
              text = HTML('App is initialized!<br><br>
-                          For a detailed explanation of the underlying analyses, see
-                          <a href="https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1002/eap.1505">Doherty et al. (2017)</a><br><br>
-                          If you want to process a very large extent, it is best to run the app offline.<br>
+                         For a detailed explanation of the underlying analyses, see
+                         <a href="https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1002/eap.1505">Doherty et al. (2017)</a><br><br>
+                         If you want to process a very large extent, it is best to run the app offline.<br>
                          <a href="https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html">
                          Click here for more information!</a>'),
              type = 'success',
@@ -137,7 +137,7 @@ server <- shinyServer(function(input, output, session) {
     
     stack('clipped.tif')
     
-    })
+  })
   
   unscaled <- eventReactive(input$goButton,{
     progress <- shiny::Progress$new()
@@ -157,8 +157,8 @@ server <- shinyServer(function(input, output, session) {
     
     if(nrow(roiDF) < input$cluster.num){
       shinyalert(title = 'Invalid region of interest!',
-                 text = 'Please select regions containing land masses 
-                 within the bounds of -135 to -45 degrees longitude and 15 to 60 degrees latitude. ',
+                 text = 'Selection contains insufficient land area. Limit selection to land masses
+                 within the bounds of -168 to -52 degrees longitude and 7 to 83 degrees latitude. ',
                  type = 'error')
     }
     roiDF
@@ -313,7 +313,7 @@ server <- shinyServer(function(input, output, session) {
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Mapping climate similarity", value = 0.6)
-
+    
     cropped.stack <- map.crop()
     extent.max <- max.find()
     best.medoids <- medoids()
@@ -358,10 +358,10 @@ server <- shinyServer(function(input, output, session) {
     cropped.stack <- map.crop()
     
     if(is.null(input$leaf_click$lng) |
-       input$leaf_click$lng < -135 |
-       input$leaf_click$lng > -45 |
-       input$leaf_click$lat < 15 |
-       input$leaf_click$lat > 60
+       input$leaf_click$lng < -168 |
+       input$leaf_click$lng > -52 |
+       input$leaf_click$lat < 7 |
+       input$leaf_click$lat > 83
     ){return()}else{
       
       click.xy <- SpatialPoints(coords = data.frame(input$leaf_click$lng, input$leaf_click$lat),
@@ -373,7 +373,7 @@ server <- shinyServer(function(input, output, session) {
     
     center <- subset(map.vals, cell == map.cell, select=c("accession","clim.sim"))
     vals <- subset(unscaled(), cell == map.cell, select=c("MAT","DiurnalRange","TSeasonality",
-                                                         "TWettestQtr","MAP","PSeasonality","PWarmestQtr"))
+                                                          "TWettestQtr","MAP","PSeasonality","PWarmestQtr"))
     
     if(nrow(center) > 0){
       sub <- data.frame(center,vals)
@@ -486,7 +486,7 @@ server <- shinyServer(function(input, output, session) {
   })
   
   rasStack <- eventReactive(input$goButton,{
-
+    
     cropped.stack <- map.crop()
     extent.max <- max.find()
     best.medoids <- medoids()
