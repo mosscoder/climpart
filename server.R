@@ -88,6 +88,10 @@ server <- shinyServer(function(input, output, session) {
     }
     
     if(!is.null(input$boundFile2) & input$boundSelect == "poly"){
+      progress <- shiny::Progress$new()
+      on.exit(progress$close())
+      progress$set(message = "Processing user polygon", value = 0.5)
+      
       file.remove(paste0(temp.folder,'/userPoly.shp'))
       inFile <- input$boundFile2
       unzip(zipfile = inFile$datapath, exdir = temp.folder) #specify user poly here
@@ -105,11 +109,14 @@ server <- shinyServer(function(input, output, session) {
       temp.folder <- tempdir()
       writeOGR(polyDF, temp.folder, "userPoly", driver="ESRI Shapefile", overwrite_layer = T)
       
-      leafletProxy('leaf') %>%
-        clearShapes() %>%
-        addPolygons(data = poly4map,
-                    weight = 2, 
-                    color = '#317873')
+      withProgress(message = "Rendering user polygon",
+                   value = 0.75,
+                   leafletProxy('leaf') %>%
+                     clearShapes() %>%
+                     addPolygons(data = poly4map,
+                                 weight = 2, 
+                                 color = '#317873')
+      )
     }
   })
   
