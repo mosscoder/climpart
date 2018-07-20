@@ -1,0 +1,55 @@
+---
+title: "Offline Climpart Instructions"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = T)
+```
+
+## Step 1: Install Required Software
+[R Programming Language](https://www.r-project.org)    
+[R Studio IDE](https://www.rstudio.com)  
+[GDAL](http://www.gdal.org) ([Windows Install](https://sandbox.idre.ucla.edu/sandbox/tutorials/installing-gdal-for-windows),
+[MacOS Install Part 1](https://brew.sh), [MacOS Install Part 2](https://trac.osgeo.org/gdal/wiki/BuildingOnMac))
+ 
+
+## Step 2: Install R Packages
+After installing the required software, open R Studio and run the following to install the required R package dependencies:
+
+```{r, eval= FALSE }
+install.packages(
+  c("rgdal","rgeos","raster","sp","shiny",
+    "gdalUtils","data.table","leaflet",
+    "shinycssloaders","htmlwidgets","tidyverse",
+    "shinyalert")
+)
+```
+
+## Step 3: Download Climate Data
+Download the climateMerc.tif.zip from [this location](https://drive.google.com/open?id=1Ds5LuUiTknXlGiR3hl8VB28O8RvfFnNd), then unzip the contents to your working directory. Run the following to check if the file is in your working directory:
+
+```{r, eval = F}
+file.exists('climateMerc.tif')
+```
+
+## Step 4: Execute the Source Code for the App
+Run the following commands in R Studio to load the app:
+
+```{r, eval = FALSE}
+
+#Github repository for the server script
+source('https://raw.githubusercontent.com/mosscoder/climpart/master/server.R')
+
+#Github repository for the UI script
+source('https://raw.githubusercontent.com/mosscoder/climpart/master/ui.R')
+
+shinyApp(ui = ui, server = server,
+         onStart = function(){
+           rasterOptions(maxmemory = 1e9)
+           temp.folder <<-  tempdir()
+         })
+```
+
+
+
