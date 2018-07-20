@@ -150,7 +150,6 @@ server <- shinyServer(function(input, output, session) {
                cutline = shpLoc,
                rasLoc,
                'clipped.tif')
-      
     }
     
     if(input$boundSelect == "poly"){ #extent set by poly
@@ -189,8 +188,9 @@ server <- shinyServer(function(input, output, session) {
     
     if(nrow(roiDF) < input$cluster.num){
       shinyalert(title = 'Invalid region of interest!',
-                 text = 'Selection contains insufficient land area. Limit selection to land masses
-                 within the bounds of -168 to -52 degrees longitude and 7 to 83 degrees latitude. ',
+                 text = HTML('Selection contains insufficient land area. Limit selection to land masses
+                 within the bounds of -168 to -52 degrees longitude and 7 to 83 degrees latitude.'),
+                 html = T,
                  type = 'error')
     }
     roiDF
@@ -701,6 +701,10 @@ server <- shinyServer(function(input, output, session) {
   output$centerTable <- renderDataTable({
     raw <- medprint() %>% dplyr::select(-cell) %>% dplyr::rename(Latitude = y, Longitude = x)
     raw
+  })
+  
+  observeEvent(input$goButton, {
+    file.remove('clipped.tif')
   })
   
   output$downloadData <- downloadHandler(
