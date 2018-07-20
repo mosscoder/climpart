@@ -1,7 +1,7 @@
 server <- shinyServer(function(input, output, session) {
   shinyalert(title = 'Welcome to the Climpart App!',
              text = HTML('App is initialized!<br><br>
-                         For a detailed explanation of the underlying analyses, see
+                          For a detailed explanation of the underlying analyses, see
                          <a href="https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1002/eap.1505">Doherty et al. (2017)</a><br><br>
                          If you want to process a very large extent, it is best to run the app offline.<br>
                          <a href="https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html">
@@ -68,6 +68,51 @@ server <- shinyServer(function(input, output, session) {
                                 then overlay the center.assignment.tif, setting it to ~50% transparency, with values 
                                 as categorical, each value a contrasting color.')
   
+  output$leaf <- renderLeaflet({
+    leaflet() %>%
+      setView(lat = 50, lng = -100, zoom = 3) %>%
+      addProviderTiles("Esri.WorldTopoMap", group = "Terrain") %>%
+      addProviderTiles("CartoDB.Positron", group = "Light Basemap") 
+  })
+  
+  observe({
+    if(input$boundSelect == "slider"){ 
+    leafletProxy('leaf') %>%
+      clearShapes() %>%
+      addRectangles(lng1 = input$lon.range[1],
+                    lng2 = input$lon.range[2],
+                    lat1 = input$lat.range[1],
+                    lat2 = input$lat.range[2],
+                    color = '#317873',
+                    weight = 2)
+    }
+    
+    if(!is.null(input$boundFile2) & input$boundSelect == "poly"){
+      file.remove(paste0(temp.folder,'/userPoly.shp'))
+      inFile <- input$boundFile2
+      unzip(zipfile = inFile$datapath, exdir = temp.folder) #specify user poly here
+      shp.file.dir <- list.files(path = temp.folder, pattern = "\\.shp$")
+      shp.layer <- strsplit(shp.file.dir, ".shp")
+      
+      poly <- readOGR(dsn = path.expand(paste0(temp.folder,"/",shp.file.dir)), layer=shp.layer[[1]])
+      file.remove(paste0(temp.folder,"/",shp.file.dir))
+      
+      poly.trans <- spTransform(gUnionCascaded(poly), CRS("+init=epsg:3857"))
+      poly4map <- spTransform(gUnionCascaded(poly), CRS("+init=epsg:4326"))
+      
+      polyDF <- SpatialPolygonsDataFrame(poly.trans, data.frame(f=0), match.ID = F)
+      
+      temp.folder <- tempdir()
+      writeOGR(polyDF, temp.folder, "userPoly", driver="ESRI Shapefile", overwrite_layer = T)
+      
+      leafletProxy('leaf') %>%
+        clearShapes() %>%
+        addPolygons(data = poly4map,
+                    weight = 2, 
+                    color = '#317873')
+    }
+  })
+  
   climClip <- eventReactive(input$goButton,{
     
     progress <- shiny::Progress$new()
@@ -85,9 +130,7 @@ server <- shinyServer(function(input, output, session) {
       extMercator <- spTransform(extPoly, CRS("+init=epsg:3857"))
       
       polyDF <- SpatialPolygonsDataFrame(extMercator, data.frame(f=0), match.ID = F)
-      
-      
-      #temp.folder <- tempdir()
+    
       writeOGR(polyDF, temp.folder, "userPoly", driver="ESRI Shapefile", overwrite_layer = T)
       
       shpLoc <- path.expand(paste0(temp.folder,'/userPoly.shp'))
@@ -104,25 +147,7 @@ server <- shinyServer(function(input, output, session) {
     }
     
     if(input$boundSelect == "poly"){ #extent set by poly
-      
-      
-      file.remove(paste0(temp.folder,"/userPoly.shp"))
-      
-      inFile <- input$boundFile2
-      unzip(zipfile = inFile$datapath, exdir = temp.folder) #specify user poly here
-      shp.file.dir <- list.files(path = temp.folder, pattern = "\\.shp$")
-      shp.layer <- strsplit(shp.file.dir, ".shp")[[1]]
-      
-      poly <- readOGR(dsn = path.expand(paste0(temp.folder,"/",shp.file.dir)), layer=shp.layer)
-      file.remove(paste0(temp.folder,"/",shp.file.dir))
-      
-      poly.trans <- spTransform(gUnionCascaded(poly), CRS("+init=epsg:3857"))
-      
-      polyDF <- SpatialPolygonsDataFrame(poly.trans, data.frame(f=0), match.ID = F)
-      
-      temp.folder <- tempdir()
-      writeOGR(polyDF, temp.folder, "userPoly", driver="ESRI Shapefile", overwrite_layer = T)
-      
+
       shpLoc <- path.expand(paste0(temp.folder,'/userPoly.shp'))
       rasLoc <- path.expand('./climateMerc.tif')
       getwd()
@@ -137,7 +162,7 @@ server <- shinyServer(function(input, output, session) {
     
     stack('clipped.tif')
     
-  })
+    })
   
   unscaled <- eventReactive(input$goButton,{
     progress <- shiny::Progress$new()
@@ -313,7 +338,7 @@ server <- shinyServer(function(input, output, session) {
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Mapping climate similarity", value = 0.6)
-    
+
     cropped.stack <- map.crop()
     extent.max <- max.find()
     best.medoids <- medoids()
@@ -373,7 +398,7 @@ server <- shinyServer(function(input, output, session) {
     
     center <- subset(map.vals, cell == map.cell, select=c("accession","clim.sim"))
     vals <- subset(unscaled(), cell == map.cell, select=c("MAT","DiurnalRange","TSeasonality",
-                                                          "TWettestQtr","MAP","PSeasonality","PWarmestQtr"))
+                                                         "TWettestQtr","MAP","PSeasonality","PWarmestQtr"))
     
     if(nrow(center) > 0){
       sub <- data.frame(center,vals)
@@ -486,7 +511,7 @@ server <- shinyServer(function(input, output, session) {
   })
   
   rasStack <- eventReactive(input$goButton,{
-    
+
     cropped.stack <- map.crop()
     extent.max <- max.find()
     best.medoids <- medoids()
@@ -597,7 +622,7 @@ server <- shinyServer(function(input, output, session) {
     c(sim.pal, ras.zone.pal)
   })
   
-  output$leaf <- renderLeaflet({
+  observeEvent(input$goButton,{
     input$goButton
     
     if(input$goButton[1]==0){
@@ -618,9 +643,17 @@ server <- shinyServer(function(input, output, session) {
     on.exit(progress$close())
     progress$set(message = "Rendering map", value = 0.99)
     
-    m <- leaflet(options = leafletOptions(zoomControl = T, dragging = T)) %>% 
-      addProviderTiles("CartoDB.Positron", group="Light Basemap") %>%
-      addProviderTiles("Esri.WorldTopoMap", group="Terrain") %>%
+    ext <- extent(clim.ras)
+    extPoly <- as(ext, "SpatialPolygons")
+    sp::proj4string(extPoly) <- "+init=epsg:3857"
+    extLatLon <- extent(spTransform(extPoly, CRS("+init=epsg:4326")))
+    
+    leafletProxy("leaf")  %>%
+      flyToBounds(lng1 = extLatLon[1], lng2 = extLatLon[2], lat1 = extLatLon[3], lat2 = extLatLon[4]) %>%
+      clearMarkers() %>%
+      clearImages() %>%
+      clearControls() %>%
+      clearShapes() %>%
       addCircleMarkers(data=medoid.print, lng= ~x, lat =~y, radius=4, color="black", group="Overalys") %>%
       addCircleMarkers(data=medoid.print, lng= ~x, lat =~y, radius=3, color="white", 
                        fillOpacity = 1,  group="Overalys", label=~medoid.print[,1]) %>%
@@ -634,12 +667,12 @@ server <- shinyServer(function(input, output, session) {
                        position=ifelse(nrow(medoid.print) > 30, "topleft", "topright")) %>%
       addLegend("topright",pal = ras.zone.pal,
                 values = factor(1:nrow(medoid.print)),
-                title ="Assignment") %>%
+                title ="Assignment",
+                layerId = 'assignL') %>%
       addLegend(ifelse(nrow(medoid.print) > 20, "bottomleft", "topright"),
                 pal = sim.pal, values = minValue(clim.ras):maxValue(clim.ras),
-                title ="Climate<br>Similarity", bins = 5)
-    
-    m
+                title ="Climate<br>Similarity", bins = 5,
+                layerId = 'simL')
     
   })
   
