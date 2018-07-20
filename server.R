@@ -4,7 +4,7 @@ server <- shinyServer(function(input, output, session) {
                           For a detailed explanation of the underlying analyses, see
                          <a href="https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1002/eap.1505">Doherty et al. (2017)</a><br><br>
                          If you want to process a very large extent, it is best to run the app offline.<br>
-                         <a href="https://storage.googleapis.com/seedmapper_dat/offlineInstructions.html">
+                         <a href="https://github.com/mosscoder/climpart/blob/master/offlineInstructions.Rmd">
                          Click here for more information!</a>'),
              type = 'success',
              closeOnClickOutside = TRUE,
@@ -67,6 +67,8 @@ server <- shinyServer(function(input, output, session) {
                                 mapping feature, set high values of the simval.tif as black and low values as white, 
                                 then overlay the center.assignment.tif, setting it to ~50% transparency, with values 
                                 as categorical, each value a contrasting color.')
+  
+  output$inc<-renderUI({includeHTML("https://raw.githubusercontent.com/mosscoder/climpart/master/offlineInstructions.html")})
   
   output$leaf <- renderLeaflet({
     leaflet() %>%
