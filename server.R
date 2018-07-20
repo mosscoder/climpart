@@ -97,7 +97,7 @@ server <- shinyServer(function(input, output, session) {
       poly <- readOGR(dsn = path.expand(paste0(temp.folder,"/",shp.file.dir)), layer=shp.layer[[1]])
       file.remove(paste0(temp.folder,"/",shp.file.dir))
       
-      poly.trans <- spTransform(gUnionCascaded(poly), CRS("+init=epsg:3857"))
+      poly.trans <- gBuffer(spTransform(gUnionCascaded(poly), CRS("+init=epsg:3857")), width = 1)
       poly4map <- spTransform(gUnionCascaded(poly), CRS("+init=epsg:4326"))
       
       polyDF <- SpatialPolygonsDataFrame(poly.trans, data.frame(f=0), match.ID = F)
