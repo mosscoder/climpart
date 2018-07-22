@@ -47,11 +47,11 @@ server <- shinyServer(function(input, output, session) {
                                 sampling plant materials for common garden studies, establishing common garden 
                                 arrays, establishing vegetation transects, or banking seed for native plant 
                                 conservation. Analyses are conducted on the Bioclim 
-                                (http://www.worldclim.org/bioclim) dataset for the extent of 15 to 60 degrees 
-                                latitude and -135 to -45 degrees longitude. We chose to incorporate seven of these 
+                                (http://www.worldclim.org/bioclim) dataset for the extent of North America (-168 to -52 degrees longitude and
+                                7 to 83 degrees latitude). We chose to incorporate seven of these 
                                 variables that together capture unique axes of multivariate climate space, including: 
                                 mean annual temperature, diurnal range, temperature seasonality, temperature of 
-                                warmest quarter, mean annual precipitation, precipitation seasonality, and 
+                                wettest quarter, mean annual precipitation, precipitation seasonality, and 
                                 precipitation of warmest quarter. 
                                 To operate the app, the user may input a lat/long bounding box with the supplied 
                                 slider bars or a spatial polygon. They then specify the number of partitions (as many as 50), click the 
@@ -207,7 +207,18 @@ server <- shinyServer(function(input, output, session) {
     
     unsc <- unscaled()
     
-    cropped.stack <- data.frame(unsc[,1:3],scale(unsc[,4:10]))
+    croppedStack <- data.frame(unsc[,1:3],scale(unsc[,4:10]))
+    colnames(croppedStack) <- colnames(unsc)
+    
+    croppedStack %>%
+      mutate(MAT = croppedStack$MAT*input$wtMAT) %>%
+      mutate(DiurnalRange =  croppedStack$DiurnalRange*input$wtDiurnal) %>%
+      mutate(TSeasonality= croppedStack$TSeasonality*input$wtTSeason) %>%
+      mutate(TWettestQtr= croppedStack$TWettestQtr*input$wtTWet) %>%
+      mutate(MAP=MAP*input$wtMAP) %>%
+      mutate(PSeasonality= croppedStack$PSeasonality*input$wtPSeason) %>%
+      mutate(PWarmestQtr= croppedStack$PWarmestQtr*input$wtPWarm) %>%
+      as.data.frame()
     
   })
   

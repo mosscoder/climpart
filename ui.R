@@ -29,21 +29,45 @@ ui <- fluidPage(
                                                 min =-168, max = -52, step = 0.1,
                                                 value=c(-115,-105))),
                    
-                   sliderInput("cluster.num", label = "Number of climate paritions:", 
+                   sliderInput("cluster.num", label = "Number of climate partitions:", 
                                ticks = F, value=5, min = 1, max = 50, step = 1),
+                   HTML(paste0('<button data-toggle="collapse" class="btn btn-default" id="wtButton" 
+                               data-target="#demo"><img src="https://github.com/mosscoder/climpartUploadTest/blob/master/scale.png?raw=true" height = 20, width 20/><span>Weight Variables</span></button>')),
+                   tags$style(type = "text/css", "#wtButton {width: 190px; display: inline-block; padding: 5px; margin: 2px;}"),
                    
-                   actionButton("goButton", label=HTML("<b>Generate Partitions</b>"), 
-                                style = "background-color: #18B66A; color: #fff; border-color: #ffffff; width: 190px"),
+                   tags$div(id = 'demo',  class="collapse out",
+                            sliderInput("wtMAT", label = "Mean Annual Temperature", 
+                                        ticks = F, value=1, min = 0, max = 1, step = .01),
+                            sliderInput("wtDiurnal", label = "Diurnal Range", 
+                                        ticks = F, value=1, min = 0, max = 1, step = .01),
+                            sliderInput("wtTSeason", label = "Temperature Seasonality", 
+                                        ticks = F, value=1, min = 0, max = 1, step = .01),
+                            sliderInput("wtTWet", label = "Temperature Wettest Qtr.",
+                                        ticks = F, value=1, min = 0, max = 1, step = .01),
+                            sliderInput("wtMAP", label = "Mean Annual Precipitation",
+                                        ticks = F, value=1, min = 0, max = 1, step = .01),
+                            sliderInput("wtPSeason", label = "Precipitation Seasonality",
+                                        ticks = F, value=1, min = 0, max = 1, step = .01),
+                            sliderInput("wtPWarm", label = "Precipitation Warmest Qtr.",
+                                        ticks = F, value=1, min = 0, max = 1, step = .01)        
+                   ),
                    
-                   downloadButton('downloadData', 'Download Data', style = ' width: 190px;'),
+                   actionButton("goButton", label=HTML("<b>Generate Partitions</b>")),
+                   
+                   downloadButton('downloadData', 'Download Data', style = ' width: 190px; margin: 2px;'),
                    
                    helpText("Click above to download underlying rasters and summary data. Note that clicking will open a new tab."),
                    
-                   actionButton('moreInfo', label = HTML("<b>Contact Info & Disclaimer</b>"),
-                                style = 'background-color: #008CBA; color: #fff;border-color: #ffffff; width: 190px'))), 
+                   actionButton('moreInfo', label = HTML("<b>Contact Info & Disclaimer</b>")),
+                   
+                   tags$style(type = "text/css", "#goButton{background-color: #18B66A; color: #fff; border-color: #ffffff; width: 190px;margin: 2px;}
+                              #goButton:hover{background-color: #1EE285;}
+                              #moreInfo{background-color: #008CBA; color: #fff;border-color: #ffffff; width: 190px;margin: 2px; padding:5px}
+                              #moreInfo:hover{background-color: #00B1ED;}")
+                   )), 
     
     mainPanel(width = 10,
-          
+              
               tabsetPanel(id = "tabs",
                           tabPanel("Map", id="map", leafletOutput("leaf",width="100%", height = "700px") %>% withSpinner(size = 3)),
                           tabPanel("Climate Center Data", dataTableOutput("centerTable")),
@@ -54,5 +78,5 @@ ui <- fluidPage(
                                                width = "100%", height = "1000px", style="border:0"))
               ))
     
-    )
+                   )
   )
