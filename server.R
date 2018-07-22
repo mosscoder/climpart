@@ -215,7 +215,7 @@ server <- shinyServer(function(input, output, session) {
       mutate(DiurnalRange =  croppedStack$DiurnalRange*input$wtDiurnal) %>%
       mutate(TSeasonality= croppedStack$TSeasonality*input$wtTSeason) %>%
       mutate(TWettestQtr= croppedStack$TWettestQtr*input$wtTWet) %>%
-      mutate(MAP=MAP*input$wtMAP) %>%
+      mutate(MAP=croppedStack$MAP*input$wtMAP) %>%
       mutate(PSeasonality= croppedStack$PSeasonality*input$wtPSeason) %>%
       mutate(PWarmestQtr= croppedStack$PWarmestQtr*input$wtPWarm) %>%
       as.data.frame()
