@@ -4,7 +4,7 @@ server <- shinyServer(function(input, output, session) {
                           For a detailed explanation of the underlying analyses, see
                          <a href="https://esajournals.onlinelibrary.wiley.com/doi/abs/10.1002/eap.1505">Doherty et al. (2017)</a><br><br>
                          If you want to process a very large extent, it is best to run the app offline.<br>
-                         <a href="https://cdn.rawgit.com/mosscoder/climpart/master/offlineInstructions.html">
+                         <a href="https://rawgit.com/mosscoder/climpart/master/offlineInstructions.html">
                          Click here for more information!</a>'
                          ),
              type = 'success',

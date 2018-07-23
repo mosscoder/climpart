@@ -74,7 +74,7 @@ ui <- fluidPage(
                           tabPanel("Within-Assignment Distributions", id="box", plotOutput("boxPlot", height=2000) %>% withSpinner( size = 20)),
                           tabPanel("Background and Use", id="background", textOutput('instruct')),
                           tabPanel("Run Offline", id="offline",
-                                   tags$iframe(src='https://cdn.rawgit.com/mosscoder/climpart/master/offlineInstructions.html',
+                                   tags$iframe(src='https://rawgit.com/mosscoder/climpart/master/offlineInstructions.html',
                                                width = "100%", height = "1000px", style="border:0"))
               ))
     
