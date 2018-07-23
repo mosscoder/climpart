@@ -195,15 +195,19 @@ server <- shinyServer(function(input, output, session) {
                  within the bounds of -168 to -52 degrees longitude and 7 to 83 degrees latitude.'),
                  html = T,
                  type = 'error')
+      
+      NULL
+    }else{
+      roiDF
     }
-    roiDF
-    
   })
   
   map.crop <- eventReactive(input$goButton,{
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Scaling data", value = 0.25)
+    
+    req(unscaled())
     
     unsc <- unscaled()
     
