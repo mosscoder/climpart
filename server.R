@@ -213,11 +213,11 @@ server <- shinyServer(function(input, output, session) {
     croppedStack %>%
       mutate(MAT = croppedStack$MAT*input$wtMAT) %>%
       mutate(DiurnalRange =  croppedStack$DiurnalRange*input$wtDiurnal) %>%
-      mutate(TSeasonality= croppedStack$TSeasonality*input$wtTSeason) %>%
-      mutate(TWettestQtr= croppedStack$TWettestQtr*input$wtTWet) %>%
-      mutate(MAP=croppedStack$MAP*input$wtMAP) %>%
-      mutate(PSeasonality= croppedStack$PSeasonality*input$wtPSeason) %>%
-      mutate(PWarmestQtr= croppedStack$PWarmestQtr*input$wtPWarm) %>%
+      mutate(TSeasonality = croppedStack$TSeasonality*input$wtTSeason) %>%
+      mutate(TWettestQtr = croppedStack$TWettestQtr*input$wtTWet) %>%
+      mutate(MAP = croppedStack$MAP*input$wtMAP) %>%
+      mutate(PSeasonality = croppedStack$PSeasonality*input$wtPSeason) %>%
+      mutate(PWarmestQtr = croppedStack$PWarmestQtr*input$wtPWarm) %>%
       as.data.frame()
     
   })
@@ -273,9 +273,15 @@ server <- shinyServer(function(input, output, session) {
     
     kmeans.medoid.reps <- function(cluster, rep){
       kmeans.medoids.solutions <- function(cluster){
-        species.kmeans <- kmeans(x=cropped.stack[,4:10], centers=cluster, iter.max = 100000000)
         
-        species.centers <- species.kmeans$centers
+        # species.kmeans <- kmeans(x=cropped.stack[,4:10], centers=cluster, iter.max = 100000000)
+        # species.centers <- species.kmeans$centers
+        species.centers <- MiniBatchKmeans(data = cropped.stack[,4:10],
+                        clusters = cluster,
+                        batch_size = 1000,
+                        max_iters = 1e9
+                        )$centroids
+        
         
         euc.dist <- function(full.df, med.df, med){
           
@@ -319,7 +325,7 @@ server <- shinyServer(function(input, output, session) {
       return(out)
     }
     
-    kmeans.medoids.reps <- data.frame(do.call(rbind, lapply(FUN=kmeans.medoid.reps, X=1:5, cluster=input$cluster.num))) #input cluster number here
+    kmeans.medoids.reps <- data.frame(do.call(rbind, lapply(FUN=kmeans.medoid.reps, X=1, cluster=input$cluster.num))) #input cluster number here
     
     best.medoids <- subset(kmeans.medoids.reps, kmeans.medoids.reps$mean.cell.value == max(kmeans.medoids.reps$mean.cell.value ))
     rep.screen <- unique(best.medoids$rep)[1]
