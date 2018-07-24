@@ -305,7 +305,7 @@ server <- shinyServer(function(input, output, session) {
     )
     
     medoidsLatOrd <- kmeans.medoids[order(kmeans.medoids$cell),]
-    medoidsLatOrd #### Need to reconcile column index in medprint and sim.calcs
+    medoidsLatOrd
   }) 
   
   medprint <- eventReactive(input$goButton,{
@@ -350,10 +350,13 @@ server <- shinyServer(function(input, output, session) {
       
       clim.dist.df <- function(col){  #Euclidean distance function
         
-        euc <- sqrt((cropped.stack[,4] - col.dat[col,3])^2 + (cropped.stack[,5] - col.dat[col,4])^2 + 
-                      (cropped.stack[,6] - col.dat[col,5])^2 + (cropped.stack[,7] - col.dat[col,6])^2 +
-                      (cropped.stack[,8] - col.dat[col,7])^2 + (cropped.stack[,9] - col.dat[col,8])^2 +
-                      (cropped.stack[,10] - col.dat[col,9])^2)
+        euc <- sqrt((cropped.stack[,4] - col.dat[col,4])^2 +
+                      (cropped.stack[,5] - col.dat[col,5])^2 + 
+                      (cropped.stack[,6] - col.dat[col,6])^2 +
+                      (cropped.stack[,7] - col.dat[col,7])^2 +
+                      (cropped.stack[,8] - col.dat[col,8])^2 + 
+                      (cropped.stack[,9] - col.dat[col,9])^2 +
+                      (cropped.stack[,10] - col.dat[col,10])^2)
         return(euc)
       }
       
@@ -367,12 +370,12 @@ server <- shinyServer(function(input, output, session) {
       clim.sim <- 1- as.data.frame(do.call(pmin, euc.out))/extent.max #identifying minimum climate distance by cell, converting to climate similarity
       
       
-      out <- as.data.frame(cbind(accession, clim.sim, cropped.stack)) #georeferencing the closest accession and climate similarity data
+      out <- as.data.frame(cbind(accession, clim.sim, cropped.stack))
       colnames(out)[2] <- "clim.sim"
       return(out) #returning data frame of relevant data
     }
     
-    map.vals <- maps.clust.fun(clim.vals = best.medoids[,5:13])
+    map.vals <- maps.clust.fun(clim.vals = best.medoids)
     levels(map.vals$accession) <- levels(medoid.print$`Climate Center`)
     map.vals$accession <- factor(map.vals$accession, levels= paste("Center",1:nrow(medoid.print)))
     map.vals
