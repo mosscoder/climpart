@@ -5,7 +5,7 @@ ui <- fluidPage(
     sidebarPanel(width=2,
                  
                  fluidRow(
-                   img(src="https://storage.googleapis.com/seedmapper_dat/usgs.log.png", height=81, width=180),
+                   img(src="https://storage.googleapis.com/seedmapper_dat/usgs.log.png", height=81, width='100%'),
                    
                    selectInput("boundSelect", label = ("How would you like to define your area of interest?"), 
                                choices = list("Lat/Long Slider Bars" = "slider", 
@@ -33,7 +33,7 @@ ui <- fluidPage(
                                ticks = F, value=5, min = 1, max = 50, step = 1),
                    HTML(paste0('<button data-toggle="collapse" class="btn btn-default" id="wtButton" 
                                data-target="#demo"><img src="https://github.com/mosscoder/climpartUploadTest/blob/master/scale.png?raw=true" height = 20, width 20/><span>Weight Variables</span></button>')),
-                   tags$style(type = "text/css", "#wtButton {width: 190px; display: inline-block; padding: 5px; margin: 2px;}"),
+                   tags$style(type = "text/css", "#wtButton {width: 100%; display: inline-block; padding: 5px; margin: 2px;}"),
                    
                    tags$div(id = 'demo',  class="collapse out",
                             sliderInput("wtMAT", label = "Mean Annual Temperature", 
@@ -54,15 +54,15 @@ ui <- fluidPage(
                    
                    actionButton("goButton", label=HTML("<b>Generate Partitions</b>")),
                    
-                   downloadButton('downloadData', 'Download Data', style = ' width: 190px; margin: 2px;'),
+                   downloadButton('downloadData', 'Download Data', style = ' width: 100%; margin: 2px;'),
                    
                    helpText("Click above to download underlying rasters and summary data. Note that clicking will open a new tab."),
                    
-                   actionButton('moreInfo', label = HTML("<b>Contact Info & Disclaimer</b>")),
+                   actionButton('moreInfo', label = HTML("<font size = 2><b>Contact Info & Disclaimer</b></font>")),
                    
-                   tags$style(type = "text/css", "#goButton{background-color: #18B66A; color: #fff; border-color: #ffffff; width: 190px;margin: 2px;}
+                   tags$style(type = "text/css", "#goButton{background-color: #18B66A; color: #fff; border-color: #ffffff; width: 100%;margin: 2px;}
                               #goButton:hover{background-color: #1EE285;}
-                              #moreInfo{background-color: #008CBA; color: #fff;border-color: #ffffff; width: 190px;margin: 2px; padding:5px}
+                              #moreInfo{background-color: #008CBA; color: #fff;border-color: #ffffff; width: 100%;margin: 2px; padding:5px}
                               #moreInfo:hover{background-color: #00B1ED;}")
                    )), 
     
