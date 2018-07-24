@@ -1,7 +1,5 @@
 server <- shinyServer(function(input, output, session) {
   
-  ###okay so is this still attached to the remote?
-  
   shinyalert(title = 'Welcome to the Climpart App!',
              text = HTML('App is initialized!<br><br>
                           For a detailed explanation of the underlying analyses, see
@@ -186,11 +184,11 @@ server <- shinyServer(function(input, output, session) {
     clipMat <- as.data.frame(clip)
     cell <- 1:ncell(clip)
     
-    colnames(clipMat) <- c("MAT","DiurnalRange","TSeasonality",
-                           "TWettestQtr","MAP","PSeasonality","PWarmestQtr")
-    
     xy <- xyFromCell(clip, cell)
     roiDF <- na.omit(data.frame(cell = cell, x = xy[,1], y = xy[,2], clipMat))
+    
+    colnames(roiDF) <- c("cell", "x", "y", "MAT","DiurnalRange","TSeasonality",
+                           "TWettestQtr","MAP","PSeasonality","PWarmestQtr")
     
     if(nrow(roiDF) < input$cluster.num){
       shinyalert(title = 'Invalid region of interest!',
@@ -212,21 +210,20 @@ server <- shinyServer(function(input, output, session) {
     
     req(unscaled())
     
-    unsc <- unscaled()
+    unsc <- as.matrix(unscaled())
     
-    croppedStack <- data.frame(unsc[,1:3],scale(unsc[,4:10]))
-    colnames(croppedStack) <- colnames(unsc)
+    croppedStack <- cbind(unsc[,1:3],scale(unsc[,4:10]))
     
-    croppedStack %>%
-      mutate(MAT = croppedStack$MAT*input$wtMAT) %>%
-      mutate(DiurnalRange =  croppedStack$DiurnalRange*input$wtDiurnal) %>%
-      mutate(TSeasonality = croppedStack$TSeasonality*input$wtTSeason) %>%
-      mutate(TWettestQtr = croppedStack$TWettestQtr*input$wtTWet) %>%
-      mutate(MAP = croppedStack$MAP*input$wtMAP) %>%
-      mutate(PSeasonality = croppedStack$PSeasonality*input$wtPSeason) %>%
-      mutate(PWarmestQtr = croppedStack$PWarmestQtr*input$wtPWarm) %>%
-      as.data.frame()
+    croppedStack[,4] <- croppedStack[,4]*input$wtMAT
+    croppedStack[,5] <- croppedStack[,5]*input$wtDiurnal
+    croppedStack[,6] <- croppedStack[,6]*input$wtTSeason
+    croppedStack[,7] <- croppedStack[,7]*input$wtTWet
+    croppedStack[,8] <- croppedStack[,8]*input$wtMAP
+    croppedStack[,9] <- croppedStack[,9]*input$wtPSeason
+    croppedStack[,10] <- croppedStack[,10]*input$wtPWarm
     
+    croppedStack
+
   })
   
   max.find <- eventReactive(input$goButton,{
@@ -249,10 +246,10 @@ server <- shinyServer(function(input, output, session) {
       repeat{
         w.max <- cropped.stack[which.max(dists),]
         
-        test.dists <- sqrt((cropped.stack[,4] - w.max[,4])^2 + (cropped.stack[,5] - w.max[,5])^2 + 
-                             (cropped.stack[,6] - w.max[,6])^2 + (cropped.stack[,7] - w.max[,7])^2 +
-                             (cropped.stack[,8] - w.max[,8])^2 + (cropped.stack[,9] - w.max[,9])^2 +
-                             (cropped.stack[,10] - w.max[,10])^2)
+        test.dists <- sqrt((cropped.stack[,4] - w.max[4])^2 + (cropped.stack[,5] - w.max[5])^2 + 
+                             (cropped.stack[,6] - w.max[6])^2 + (cropped.stack[,7] - w.max[7])^2 +
+                             (cropped.stack[,8] - w.max[8])^2 + (cropped.stack[,9] - w.max[9])^2 +
+                             (cropped.stack[,10] - w.max[10])^2)
         
         new.max <- max(test.dists)
         if(new.max > max.dists){
@@ -305,7 +302,7 @@ server <- shinyServer(function(input, output, session) {
         med.df = species.centers,
         X = 1:input$cluster.num
       )
-    )
+    ) %>% as.data.frame()
     
     medoidsLatOrd <- kmeans.medoids[order(kmeans.medoids$cell),]
     medoidsLatOrd
@@ -363,24 +360,18 @@ server <- shinyServer(function(input, output, session) {
         return(euc)
       }
       
-      euc.out <- as.data.frame(do.call(cbind, lapply(FUN=clim.dist.df, X = 1:nrow(col.dat)))) #Applying the distance function over the accessions
+      
+      euc.out <- do.call(cbind, lapply(FUN=clim.dist.df, X = 1:nrow(col.dat))) #Applying the distance function over the accessions
       colnames(euc.out) <- paste(1:nrow(col.dat))
-      zone <- cbind(apply( euc.out, 1, which.min)) #Determining which accession is closest in climate space for a given cell
-      zone.namer <- function(x){ # a function to rename the indices from zone to the corresponding accession id
-        return(colnames(euc.out)[x])
-      }
-      accession <- do.call(rbind, lapply(FUN=zone.namer, X=zone)) # applying zone.namer across all accessions
-      clim.sim <- 1- as.data.frame(do.call(pmin, euc.out))/extent.max #identifying minimum climate distance by cell, converting to climate similarity
-      
-      
-      out <- as.data.frame(cbind(accession, clim.sim, cropped.stack))
-      colnames(out)[2] <- "clim.sim"
+      accession <- cbind(apply( euc.out, 1, which.min)) #Determining which accession is closest in climate space for a given cell
+      clim.sim <- 1 - rowMins(euc.out)/extent.max
+    
+      out <- cbind(accession, clim.sim, cropped.stack[,1])
+      colnames(out)[1:3] <- c("accession", "clim.sim","cell")
       return(out) #returning data frame of relevant data
     }
     
-    map.vals <- maps.clust.fun(clim.vals = best.medoids)
-    levels(map.vals$accession) <- levels(medoid.print$`Climate Center`)
-    map.vals$accession <- factor(map.vals$accession, levels= paste("Center",1:nrow(medoid.print)))
+    map.vals <- maps.clust.fun(clim.vals = best.medoids) 
     map.vals
   }) 
   
@@ -403,7 +394,7 @@ server <- shinyServer(function(input, output, session) {
       map.cell <- cellFromXY(climClip(), click.trans)
     }
     
-    center <- subset(map.vals, cell == map.cell, select=c("accession","clim.sim"))
+    center <- subset(map.vals, map.vals[,3] == map.cell, select=c("accession","clim.sim"))
     vals <- subset(unscaled(), cell == map.cell, select=c("MAT","DiurnalRange","TSeasonality",
                                                          "TWettestQtr","MAP","PSeasonality","PWarmestQtr"))
     
@@ -430,16 +421,15 @@ server <- shinyServer(function(input, output, session) {
     
     map.vals <- sim.calcs()
     medoid.print <- medprint()
-    
-    sub.vals <- withProgress(message="Extracting data for center assignments", value=0.91, 
-                             filter(unscaled(), cell %in% map.vals$cell))
-    forPlot <- cbind(map.vals$accession,sub.vals[,4:10])
+
+    forPlot <- cbind(map.vals[,1], unscaled()[,4:10])
     colnames(forPlot) <- c("accession", colnames(unscaled()[,4:10]))
     forPlot$MAT <- forPlot$MAT/10
     forPlot$DiurnalRange <- forPlot$DiurnalRange/10
     forPlot$TWettestQtr <- forPlot$TWettestQtr/10
     melt <- withProgress(message="Formatting for box and whisker plots", value=0.93,
                          melt(forPlot, id.vars = "accession", measure.vars = c(colnames(forPlot[2:8]))))
+    melt$accession <- factor(melt$accession, levels = c(1:input$cluster.num))
     
     if(nrow(medoid.print) <= 50){
       palette.full <- c("#8B1117",
@@ -538,8 +528,8 @@ server <- shinyServer(function(input, output, session) {
     clim.ras <- leaf.template
     bound.ras <- leaf.template
     
-    values(clim.ras)[map.vals$cell] <- round(map.vals$clim.sim*100)
-    values(bound.ras)[map.vals$cell] <- as.integer(map.vals$accession)
+    values(clim.ras)[map.vals[,3]] <- round(map.vals[,2]*100)
+    values(bound.ras)[map.vals[,3]] <- as.integer(map.vals[,1])
     
     dataType(clim.ras) <- "INT1U"
     dataType(bound.ras) <- "INT1U"
@@ -616,12 +606,8 @@ server <- shinyServer(function(input, output, session) {
     
     grays <- withProgress(value=0.8, message="Assigning Aesthetics",gray.colors(n=10, start = 1, end = 0, alpha = NULL))
     
-    # sim.pal <- withProgress(value=0.90, message="Assigning Aesthetics",colorNumeric(grays, values(clim.ras), 
-    #                                                                                 na.color = 'transparent'))
-    
     sim.pal <- withProgress(value=0.90, message="Assigning Aesthetics",colorNumeric(grays, minValue(clim.ras):maxValue(clim.ras), 
                                                                                     na.color = 'transparent'))
-    
     
     ras.zone.pal <- withProgress(value=0.95, message="Assigning Aesthetics",colorFactor(palette, 
                                                                                         domain=factor(1:nrow(medoid.print)),
