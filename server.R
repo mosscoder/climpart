@@ -1,4 +1,7 @@
 server <- shinyServer(function(input, output, session) {
+  
+  ###okay so is this still attached to the remote?
+  
   shinyalert(title = 'Welcome to the Climpart App!',
              text = HTML('App is initialized!<br><br>
                           For a detailed explanation of the underlying analyses, see
