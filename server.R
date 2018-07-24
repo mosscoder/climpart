@@ -275,67 +275,37 @@ server <- shinyServer(function(input, output, session) {
     cropped.stack <- map.crop()
     extent.max <- max.find()
     
-    kmeans.medoid.reps <- function(cluster, rep){
-      kmeans.medoids.solutions <- function(cluster){
-        
-        # species.kmeans <- kmeans(x=cropped.stack[,4:10], centers=cluster, iter.max = 100000000)
-        # species.centers <- species.kmeans$centers
-        species.centers <- MiniBatchKmeans(data = cropped.stack[,4:10],
-                        clusters = cluster,
-                        batch_size = 1000,
-                        max_iters = 1e9
-                        )$centroids
-        
-        
-        euc.dist <- function(full.df, med.df, med){
-          
-          euc <- sqrt((full.df[,4] - med.df[med,1])^2 + (full.df[,5] - med.df[med,2])^2 + 
-                        (full.df[,6] - med.df[med,3])^2 + (full.df[,7] - med.df[med,4])^2 +
-                        (full.df[,8] - med.df[med,5])^2 + (full.df[,9] - med.df[med,6])^2 +
-                        (full.df[,10] - med.df[med,7])^2)
-          min.euc <- which.min(euc)
-          out <- full.df[min.euc,]
-          return(out)
-        }
-        
-        kmeans.medoids <- do.call(rbind, lapply(FUN=euc.dist, full.df=cropped.stack, med.df=species.centers, X=1:cluster))
-        
-        #Calculate euclidean distance between climate centers and all other cells
-        mean.cell <- function(kmeans.medoids, cropped.stack){
-          euc.dist <- function(med){
-            euc <- sqrt((cropped.stack[,4] - kmeans.medoids[med,4])^2 + (cropped.stack[,5] - kmeans.medoids[med,5])^2 + 
-                          (cropped.stack[,6] - kmeans.medoids[med,6])^2 + (cropped.stack[,7] - kmeans.medoids[med,7])^2 +
-                          (cropped.stack[,8] - kmeans.medoids[med,8])^2 + (cropped.stack[,9] - kmeans.medoids[med,9])^2 +
-                          (cropped.stack[,10] - kmeans.medoids[med,10])^2)
-            return(euc)
-          }
-          
-          euc.df <- as.data.frame(do.call(cbind, lapply(FUN=euc.dist, X=1:nrow(kmeans.medoids))))
-          #Calculate mean euclidean distance values for each climate center and covert to climate similarity
-          mean.val <- 1 - mean(do.call(pmin, data.table(euc.df)))/extent.max
-          
-          return(mean.val)
-        }
-        
-        mean.cell.value <- mean.cell(kmeans.medoids = kmeans.medoids, cropped.stack = cropped.stack)
-        out <- cbind(cluster, mean.cell.value, kmeans.medoids)
-        return(out)
-      }
+    species.centers <- MiniBatchKmeans(data = cropped.stack[,4:10],
+                                       clusters = input$cluster.num,
+                                       batch_size = 1000,
+                                       max_iters = 1e9)$centroids
+    
+    euc.dist <- function(full.df, med.df, med){
       
-      medoids.solutions <- do.call(rbind, lapply(FUN=kmeans.medoids.solutions, X=cluster))
-      
-      out <- cbind(rep, medoids.solutions)
-      
+      euc <- sqrt((full.df[,4] - med.df[med,1])^2 + 
+                    (full.df[,5] - med.df[med,2])^2 + 
+                    (full.df[,6] - med.df[med,3])^2 + 
+                    (full.df[,7] - med.df[med,4])^2 +
+                    (full.df[,8] - med.df[med,5])^2 + 
+                    (full.df[,9] - med.df[med,6])^2 +
+                    (full.df[,10] - med.df[med,7])^2)
+      min.euc <- which.min(euc)
+      out <- full.df[min.euc,]
       return(out)
     }
     
-    kmeans.medoids.reps <- data.frame(do.call(rbind, lapply(FUN=kmeans.medoid.reps, X=1, cluster=input$cluster.num))) #input cluster number here
+    kmeans.medoids <- do.call(
+      rbind,
+      lapply(
+        FUN = euc.dist,
+        full.df = cropped.stack,
+        med.df = species.centers,
+        X = 1:input$cluster.num
+      )
+    )
     
-    best.medoids <- subset(kmeans.medoids.reps, kmeans.medoids.reps$mean.cell.value == max(kmeans.medoids.reps$mean.cell.value ))
-    rep.screen <- unique(best.medoids$rep)[1]
-    best.medoids <- subset(best.medoids, rep == rep.screen)
-    best.medoids <- best.medoids[order(best.medoids$cell),]
-    best.medoids
+    medoidsLatOrd <- kmeans.medoids[order(kmeans.medoids$cell),]
+    medoidsLatOrd #### Need to reconcile column index in medprint and sim.calcs
   }) 
   
   medprint <- eventReactive(input$goButton,{
