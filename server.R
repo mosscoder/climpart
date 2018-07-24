@@ -181,11 +181,11 @@ server <- shinyServer(function(input, output, session) {
     
     clip <- climClip()
     
-    clipMat <- as.data.frame(clip)
+    clipMat <- as.matrix(clip)
     cell <- 1:ncell(clip)
     
     xy <- xyFromCell(clip, cell)
-    roiDF <- na.omit(data.frame(cell = cell, x = xy[,1], y = xy[,2], clipMat))
+    roiDF <- na.omit(cbind(cell, xy[,1], xy[,2], clipMat))
     
     colnames(roiDF) <- c("cell", "x", "y", "MAT","DiurnalRange","TSeasonality",
                            "TWettestQtr","MAP","PSeasonality","PWarmestQtr")
@@ -210,7 +210,7 @@ server <- shinyServer(function(input, output, session) {
     
     req(unscaled())
     
-    unsc <- as.matrix(unscaled())
+    unsc <- unscaled()
     
     croppedStack <- cbind(unsc[,1:3],scale(unsc[,4:10]))
     
@@ -316,9 +316,9 @@ server <- shinyServer(function(input, output, session) {
     
     cropped.stack <- map.crop()
     extent.max <- max.find()
-    best.medoids <- medoids()
+    best.medoids <- data.frame(medoids())
     
-    medoid.print <- data.frame(paste("Center", 1:nrow(best.medoids)),subset(unscaled(), cell %in% best.medoids$cell))
+    medoid.print <- data.frame(paste("Center", 1:nrow(best.medoids)),subset(unscaled(), unscaled()[,1] %in% best.medoids$cell))
     colnames(medoid.print)[1] <- "Climate Center"
     medoid.print$MAT <- medoid.print$MAT/10
     medoid.print$DiurnalRange <- medoid.print$DiurnalRange/10
@@ -395,7 +395,7 @@ server <- shinyServer(function(input, output, session) {
     }
     
     center <- subset(map.vals, map.vals[,3] == map.cell, select=c("accession","clim.sim"))
-    vals <- subset(unscaled(), cell == map.cell, select=c("MAT","DiurnalRange","TSeasonality",
+    vals <- subset(unscaled(), unscaled()[,1] == map.cell, select=c("MAT","DiurnalRange","TSeasonality",
                                                          "TWettestQtr","MAP","PSeasonality","PWarmestQtr"))
     
     if(nrow(center) > 0){
@@ -422,7 +422,7 @@ server <- shinyServer(function(input, output, session) {
     map.vals <- sim.calcs()
     medoid.print <- medprint()
 
-    forPlot <- cbind(map.vals[,1], unscaled()[,4:10])
+    forPlot <- cbind(map.vals[,1], unscaled()[,4:10]) %>% as.data.frame()
     colnames(forPlot) <- c("accession", colnames(unscaled()[,4:10]))
     forPlot$MAT <- forPlot$MAT/10
     forPlot$DiurnalRange <- forPlot$DiurnalRange/10
