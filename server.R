@@ -1,7 +1,4 @@
 server <- shinyServer(function(input, output, session) {
-  
-  
-  ##### I've made a bunch of changes OMG what now! #####
   shinyalert(title = 'Welcome to the Climpart App!',
              text = HTML('App is initialized!<br><br>
                           For a detailed explanation of the underlying analyses, see
