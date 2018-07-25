@@ -499,7 +499,8 @@ server <- shinyServer(function(input, output, session) {
       cols <- 1
     }
 
-    box <- ggplot(data=box.react() %>% filter(variable == input$ggVar1 | variable ==  input$ggVar2), aes(x=accession, y=value, fill=accession))+
+    box <- ggplot(data=box.react() %>% filter(variable == input$ggVar1 | variable ==  input$ggVar2 | variable ==  input$ggVar3),
+                  aes(x=accession, y=value, fill=accession))+
       theme_bw()+
       geom_boxplot()+
       scale_fill_manual(values=palette)+
