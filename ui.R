@@ -71,12 +71,31 @@ ui <- fluidPage(
               tabsetPanel(id = "tabs",
                           tabPanel("Map", id="map", leafletOutput("leaf",width="100%", height = "700px") %>% withSpinner(size = 3)),
                           tabPanel("Climate Center Data", dataTableOutput("centerTable")),
-                          tabPanel("Within-Assignment Distributions", id="box", plotOutput("boxPlot", height=2000) %>% withSpinner( size = 20)),
+                          tabPanel("Within-Assignment Distributions", id="box", 
+                                   fluidRow(
+                                     column(2,selectInput("ggVar1", label = ("Variable 1"), 
+                                                          choices = list("MAT" = "MAT",
+                                                                         "DiurnalRange" = "DiurnalRange",
+                                                                         "TSeasonality" = "TSeasonality",
+                                                                         "TWettestQtr" = "TWettestQtr",
+                                                                         "MAP" = "MAP",
+                                                                         "PSeasonality" = "PSeasonality",
+                                                                         "PWarmestQtr" = "PWarmestQtr"),
+                                                          selected = "MAT")),
+                                     column(2,selectInput("ggVar2", label = ("Variable 2"), 
+                                                          choices = list("MAT" = "MAT",
+                                                                         "DiurnalRange" = "DiurnalRange",
+                                                                         "TSeasonality" = "TSeasonality",
+                                                                         "TWettestQtr" = "TWettestQtr",
+                                                                         "MAP" = "MAP",
+                                                                         "PSeasonality" = "PSeasonality",
+                                                                         "PWarmestQtr" = "PWarmestQtr"),
+                                                          selected = "MAP"))),
+                                   plotOutput("boxPlot", height=650) %>% withSpinner( size = 3)),
                           tabPanel("Background and Use", id="background", textOutput('instruct')),
                           tabPanel("Run Offline", id="offline",
                                    tags$iframe(src='https://rawgit.com/mosscoder/climpart/master/offlineInstructions.html',
                                                width = "100%", height = "1000px", style="border:0"))
               ))
-    
                    )
   )

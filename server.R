@@ -431,6 +431,13 @@ server <- shinyServer(function(input, output, session) {
                          melt(forPlot, id.vars = "accession", measure.vars = c(colnames(forPlot[2:8]))))
     melt$accession <- factor(melt$accession, levels = c(1:input$cluster.num))
     
+    melt
+  })
+  
+  ggSelection <- reactive({
+    req(box.react)
+    medoid.print <- medprint()
+    
     if(nrow(medoid.print) <= 50){
       palette.full <- c("#8B1117",
                         "#29D32A",
@@ -482,17 +489,17 @@ server <- shinyServer(function(input, output, session) {
                         "#C6548A",
                         "#524874",
                         "#653A35")
-      
+
       palette <- palette.full[1:nrow(medoid.print)]
     }
-    
+
     if(nrow(medoid.print) > 25){
       cols <- 2
     }else{
       cols <- 1
     }
-    
-    box <- ggplot(data=melt, aes(x=accession, y=value, fill=accession))+
+
+    box <- ggplot(data=box.react() %>% filter(variable == input$ggVar1 | variable ==  input$ggVar2), aes(x=accession, y=value, fill=accession))+
       theme_bw()+
       geom_boxplot()+
       scale_fill_manual(values=palette)+
@@ -502,9 +509,9 @@ server <- shinyServer(function(input, output, session) {
       ylab("")+
       theme(axis.text.x = element_text(angle = 90, hjust = 1),
             text = element_text(size = 18, face = 'bold'))
-    
-    withProgress(message = "Saving box plot data", value = 0.95, ggsave(filename=paste(temp.folder,"/assignments.boxplot.pdf",sep=""), plot=box, width=8.5,height=11, dpi=300))
+
     withProgress(message="Generating box and whisker plots", value=0.97, box)
+    
   })
   
   rasStack <- eventReactive(input$goButton,{
@@ -681,7 +688,7 @@ server <- shinyServer(function(input, output, session) {
   })
   
   output$boxPlot <- renderPlot({
-    box.react()
+    ggSelection()
   })
   
   output$centerTable <- renderDataTable({
@@ -728,6 +735,82 @@ server <- shinyServer(function(input, output, session) {
       
       writeRaster(projClim.ras, "simval.tif", format="GTiff", overwrite=TRUE, datatype = "INT1U", NAflag = 0)
       writeRaster(projBound.ras,"center.assignment.tif", format="GTiff", overwrite=TRUE, datatype = "INT1U", NAflag = 0)
+      
+      if(nrow(medoid.print) <= 50){
+        palette.full <- c("#8B1117",
+                          "#29D32A",
+                          "#F743FB",
+                          "#03ADC3",
+                          "#F0A733",
+                          "#6F1D68",
+                          "#7B8BFA",
+                          "#188D57",
+                          "#1F3D46",
+                          "#FA5B93",
+                          "#C498C4",
+                          "#F8651F",
+                          "#4E5705",
+                          "#B7755E",
+                          "#283F85",
+                          "#E028B0",
+                          "#92C015",
+                          "#0196DB",
+                          "#A1AB60",
+                          "#DC9AF8",
+                          "#66BE9F",
+                          "#317313",
+                          "#B95D18",
+                          "#A27811",
+                          "#61410C",
+                          "#107585",
+                          "#9B005F",
+                          "#E92725",
+                          "#B62DC2",
+                          "#6ECC4B",
+                          "#F3606F",
+                          "#CCB437",
+                          "#622515",
+                          "#7A2C8F",
+                          "#98A008",
+                          "#4CCBC4",
+                          "#FF70B8",
+                          "#7C9FF7",
+                          "#393364",
+                          "#C64704",
+                          "#4F673D",
+                          "#A96AD3",
+                          "#CB533C",
+                          "#8ED14A",
+                          "#9FAEC1",
+                          "#C9A551",
+                          "#85D1A2",
+                          "#C6548A",
+                          "#524874",
+                          "#653A35")
+        
+        palette <- palette.full[1:nrow(medoid.print)]
+      }
+      
+      if(nrow(medoid.print) > 25){
+        cols <- 2
+      }else{
+        cols <- 1
+      }
+      
+      box <- ggplot(data=box.react(), aes(x=accession, y=value, fill=accession))+
+        theme_bw()+
+        geom_boxplot()+
+        scale_fill_manual(values=palette)+
+        guides(fill= guide_legend(title="Climate\nCenter\nAssignment", ncol= cols))+
+        facet_wrap(~variable, scales= "free_y", ncol=1)+
+        xlab("Climate Center Assignments")+
+        ylab("")+
+        theme(axis.text.x = element_text(angle = 90, hjust = 1),
+              text = element_text(size = 18, face = 'bold'))
+      
+      withProgress(message = "Saving box plot data", value = 0.75, 
+                   ggsave(filename=paste(temp.folder,"/assignments.boxplot.pdf",sep=""), 
+                          plot=box, width=8.5,height=15, dpi=300))
       
       write.csv(medoid.print, file = "center.data.csv", row.names = FALSE)
       
