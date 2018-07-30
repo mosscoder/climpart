@@ -190,6 +190,10 @@ server <- shinyServer(function(input, output, session) {
     colnames(roiDF) <- c("cell", "x", "y", "MAT","DiurnalRange","TSeasonality",
                            "TWettestQtr","MAP","PSeasonality","PWarmestQtr")
     
+    roiDF[,"MAT"] <- roiDF[,"MAT"]/10
+    roiDF[,"DiurnalRange"] <- roiDF[,"DiurnalRange"]/10
+    roiDF[,"TWettestQtr"] <- roiDF[,"TWettestQtr"]/10
+    
     if(nrow(roiDF) < input$cluster.num){
       shinyalert(title = 'Invalid region of interest!',
                  text = HTML('Selection contains insufficient land area. Limit selection to land masses
