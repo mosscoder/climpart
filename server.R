@@ -402,9 +402,6 @@ server <- shinyServer(function(input, output, session) {
       sub <- data.frame(center,vals)
       
       sub$clim.sim <- round(sub$clim.sim*100)
-      sub$MAT <- sub$MAT/10
-      sub$DiurnalRange <- sub$DiurnalRange/10
-      sub$TWettestQtr <- sub$TWettestQtr/10
       
       colnames(sub)[1:2] <- c("Assignment","Climate Similarity")
       labeler <- function(x){
@@ -424,9 +421,6 @@ server <- shinyServer(function(input, output, session) {
 
     forPlot <- cbind(map.vals[,1], unscaled()[,4:10]) %>% as.data.frame()
     colnames(forPlot) <- c("accession", colnames(unscaled()[,4:10]))
-    forPlot$MAT <- forPlot$MAT/10
-    forPlot$DiurnalRange <- forPlot$DiurnalRange/10
-    forPlot$TWettestQtr <- forPlot$TWettestQtr/10
     melt <- withProgress(message="Formatting for box and whisker plots", value=0.93,
                          melt(forPlot, id.vars = "accession", measure.vars = c(colnames(forPlot[2:8]))))
     melt$accession <- factor(melt$accession, levels = c(1:input$cluster.num))
