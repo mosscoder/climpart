@@ -7,14 +7,18 @@ ui <- fluidPage(
                  fluidRow(
                    img(src="https://storage.googleapis.com/seedmapper_dat/usgs.log.png", height=81, width='100%'),
                    
-                   selectInput("boundSelect", label = ("How would you like to define your area of interest?"), 
-                               choices = list("Lat/Long Slider Bars" = "slider", 
-                                              "Spatial Polygon" = "poly"),
-                               selected = "slider"),
+                   tags$div(id = 'selectDiv', selectInput("boundSelect", 
+                                                          label = ("How would you like to define your area of interest?"), 
+                                                          choices = list("Lat/Long Slider Bars" = "slider", 
+                                                                         "Spatial Polygon" = "poly"),
+                                                          selected = "slider")),
+                   tooltip(refId = 'selectDiv', "Analyses limited to land masses of North America."),
                    
                    conditionalPanel( condition = "input.boundSelect == 'poly'",             
-                                     fileInput("boundFile2", 
-                                               label = "Upload spatial polygon files (.shp, .shx, .prj, and .dbf) compressed into a .zip format:")),
+                                     tags$div(id = 'polyDiv', fileInput("boundFile2", 
+                                                                        label = "Upload spatial polygon:",
+                                                                        accept = ".zip"))),
+                   tooltip(refId = 'polyDiv', 'Compress the following components into a .zip file:<br><br>.shp<br>.shx<br>.prj<br>.dbf'),
                    
                    
                    conditionalPanel(condition = "input.boundSelect == 'slider'",
@@ -51,12 +55,14 @@ ui <- fluidPage(
                             sliderInput("wtPWarm", label = "Precipitation Warmest Qtr.",
                                         ticks = F, value=1, min = 0, max = 1, step = .01)        
                    ),
+                   tooltip(refId ='wtButton', 'Change the importance of any variable during similarity calculations. Weights set to 0.5 have half the importance relative to 1, 0.25 a quarter, and 0.1 a tenth. '),
                    
                    actionButton("goButton", label=HTML("<b>Generate Partitions</b>")),
                    
                    downloadButton('downloadData', 'Download Data', style = ' width: 100%; margin: 2px;'),
-                   
-                   helpText("Click above to download underlying rasters and summary data. Note that clicking will open a new tab."),
+                   tooltip(refId ='downloadData',
+                           "Click to download analysis products (opens a new tab). Includes: raster overlays, accession climate data, and boxplot assignment climate summaries."),
+                   hr(),
                    
                    actionButton('moreInfo', label = HTML("<font size = 2><b>Contact Info & Disclaimer</b></font>")),
                    

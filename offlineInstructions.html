@@ -138,7 +138,8 @@ $(document).ready(function () {
   c(&quot;rgdal&quot;,&quot;rgeos&quot;,&quot;raster&quot;,&quot;sp&quot;,&quot;shiny&quot;,
     &quot;gdalUtils&quot;,&quot;data.table&quot;,&quot;leaflet&quot;,
     &quot;shinycssloaders&quot;,&quot;htmlwidgets&quot;,&quot;tidyverse&quot;,
-    &quot;shinyalert&quot;,&quot;ClusterR&quot;, &quot;matrixStats&quot;)
+    &quot;shinyalert&quot;,&quot;ClusterR&quot;, &quot;matrixStats&quot;,
+    &quot;RLumShiny&quot;)
 )</code></pre>
 </div>
 <div id="step-3-download-climate-data" class="section level2">
@@ -149,7 +150,24 @@ $(document).ready(function () {
 <div id="step-4-execute-the-source-code-for-the-app" class="section level2">
 <h2>Step 4: Execute the Source Code for the App</h2>
 <p>Run the following commands in R Studio to load the app:</p>
-<pre class="r"><code>#Github repository for the server script
+<pre class="r"><code>library(rgdal)
+library(rgeos)
+library(raster)
+library(sp)
+library(rsconnect)
+library(shiny)
+library(leaflet)
+library(shinycssloaders)
+library(htmlwidgets)
+library(tidyverse)
+library(shinyalert)
+library(gdalUtils)
+library(ClusterR)
+library(matrixStats)
+library(data.table)
+library(RLumShiny)
+
+#Github repository for the server script
 source('https://raw.githubusercontent.com/mosscoder/climpart/master/server.R')
 
 #Github repository for the UI script

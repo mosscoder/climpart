@@ -13,7 +13,7 @@ server <- shinyServer(function(input, output, session) {
              html = T)
   
   observeEvent(input$moreInfo, {
-    showModal(modalDialog(HTML('This sampling tool is intended for use 
+    showModal(modalDialog(HTML('This tool is intended for use 
                                by USGS personnel, academia, the native seed industry, and the 
                                public. The analyses presented here are  
                                based upon the methods described in 
@@ -81,55 +81,78 @@ server <- shinyServer(function(input, output, session) {
   
   observe({
     if(input$boundSelect == "slider"){ 
-    leafletProxy('leaf') %>%
-      clearShapes() %>%
-      addRectangles(lng1 = input$lon.range[1],
-                    lng2 = input$lon.range[2],
-                    lat1 = input$lat.range[1],
-                    lat2 = input$lat.range[2],
-                    color = '#317873',
-                    weight = 2)
-    }
+      leafletProxy('leaf') %>%
+        clearShapes() %>%
+        addRectangles(lng1 = input$lon.range[1],
+                      lng2 = input$lon.range[2],
+                      lat1 = input$lat.range[1],
+                      lat2 = input$lat.range[2],
+                      color = '#317873',
+                      weight = 2,
+                      options =  pathOptions(pane = "tilePane", zIndex = 1000))
+    } else if 
     
-    if(!is.null(input$boundFile2) & input$boundSelect == "poly"){
+    (!is.null(input$boundFile2) & input$boundSelect == "poly"){
       progress <- shiny::Progress$new()
       on.exit(progress$close())
       progress$set(message = "Processing user polygon", value = 0.5)
       
-      file.remove(paste0(temp.folder,'/userPoly.shp'))
+      garbageList <- dir(path = temp.folder)
+      
+      file.remove(paste0(temp.folder,'/',garbageList))
+      
       inFile <- input$boundFile2
+      
       unzip(zipfile = inFile$datapath, exdir = temp.folder) #specify user poly here
+      
       shp.file.dir <- list.files(path = temp.folder, pattern = "\\.shp$")
-      shp.layer <- strsplit(shp.file.dir, ".shp")
+      shx.file.dir <- list.files(path = temp.folder, pattern = "\\.shx$")
+      prj.file.dir <- list.files(path = temp.folder, pattern = "\\.prj$")
+      dbf.file.dir <- list.files(path = temp.folder, pattern = "\\.dbf$")
       
-      poly <- readOGR(dsn = path.expand(paste0(temp.folder,"/",shp.file.dir)), layer=shp.layer[[1]])
-      file.remove(paste0(temp.folder,"/",shp.file.dir))
-      
-      poly.trans <- gBuffer(spTransform(gUnionCascaded(poly), CRS("+init=epsg:3857")), width = 1)
-      poly4map <- spTransform(gUnionCascaded(poly), CRS("+init=epsg:4326"))
-      
-      polyDF <- SpatialPolygonsDataFrame(poly.trans, data.frame(f=0), match.ID = F)
-      
-      temp.folder <- tempdir()
-      writeOGR(polyDF, temp.folder, "userPoly", driver="ESRI Shapefile", overwrite_layer = T)
-      
-      withProgress(message = "Rendering user polygon",
-                   value = 0.75,
-                   leafletProxy('leaf') %>%
-                     clearShapes() %>%
-                     addPolygons(data = poly4map,
-                                 weight = 2, 
-                                 color = '#317873')
-      )
+      if(length(shp.file.dir) != 0 &
+         length(shx.file.dir) != 0 &
+         length(prj.file.dir) != 0 &
+         length(dbf.file.dir) != 0){
+        shp.layer <- strsplit(shp.file.dir, ".shp")
+        
+        poly <- readOGR(dsn = path.expand(paste0(temp.folder,"/",shp.file.dir)), layer=shp.layer[[1]])
+        file.remove(paste0(temp.folder,"/",shp.file.dir))
+        
+        poly.trans <- gBuffer(spTransform(gUnionCascaded(poly), CRS("+init=epsg:3857")), width = 1)
+        poly4map <- spTransform(gUnionCascaded(poly), CRS("+init=epsg:4326"))
+        
+        polyDF <- SpatialPolygonsDataFrame(poly.trans, data.frame(f=0), match.ID = F)
+        
+        writeOGR(polyDF, temp.folder, "userPoly", driver="ESRI Shapefile", overwrite_layer = T)
+        withProgress(message = "Rendering user polygon",
+                     value = 0.75,
+                     leafletProxy('leaf') %>%
+                       clearShapes() %>%
+                       addPolygons(data = poly4map,
+                                   weight = 2,
+                                   color = '#317873',
+                                   options =  pathOptions(pane = "tilePane", zIndex = 1000)))
+      } else {
+        shinyalert(title = 'Problem with user polygon!',
+                   text = 'Please ensure that your upload contains the required files:<br>
+                   .shp<br>
+                   .shx<br>
+                   .prj<br>
+                   .dbf<br>',
+                   type = 'warning',
+                   closeOnClickOutside = TRUE,
+                   html = T)
+        file.remove(inFile$datapath)
+        NULL
+      }
     }
   })
   
   climClip <- eventReactive(input$goButton,{
-    
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Extracting climate data for user extent", value = 0.1)
-    
     if(input$boundSelect == "slider"){ 
       ext <- extent(input$lon.range[1],
                     input$lon.range[2],
@@ -141,8 +164,26 @@ server <- shinyServer(function(input, output, session) {
       extMercator <- spTransform(extPoly, CRS("+init=epsg:3857"))
       
       polyDF <- SpatialPolygonsDataFrame(extMercator, data.frame(f=0), match.ID = F)
-    
+      
       writeOGR(polyDF, temp.folder, "userPoly", driver="ESRI Shapefile", overwrite_layer = T)
+      
+      shpLoc <- path.expand(paste0(temp.folder,'/userPoly.shp'))
+      rasLoc <- path.expand('./climateMerc.tif')
+      
+      gdalwarp(srcnodata=-9999, 
+               dstnodata=-9999,
+               overwrite = T,
+               crop_to_cutline=T, 
+               cutline = shpLoc,
+               rasLoc,
+               'clipped.tif')
+      
+      file.remove(paste0(temp.folder,'/userPoly.shp'))
+      stack('clipped.tif')
+    } else if
+    
+    (input$boundSelect == "poly" &
+     file.exists(paste0(temp.folder,'/userPoly.shp'))){
       
       shpLoc <- path.expand(paste0(temp.folder,'/userPoly.shp'))
       rasLoc <- path.expand('./climateMerc.tif')
@@ -154,33 +195,25 @@ server <- shinyServer(function(input, output, session) {
                cutline = shpLoc,
                rasLoc,
                'clipped.tif')
+      stack('clipped.tif')
+    } else {
+      shinyalert(title = 'Invalid polygon!',
+                 text = HTML('<b>Please upload a valid spatial polygon<b>'
+                 ),
+                 type = 'warning',
+                 closeOnClickOutside = TRUE,
+                 html = T)
+      NULL
     }
-    
-    if(input$boundSelect == "poly"){ #extent set by poly
-
-      shpLoc <- path.expand(paste0(temp.folder,'/userPoly.shp'))
-      rasLoc <- path.expand('./climateMerc.tif')
-      getwd()
-      gdalwarp(srcnodata=-9999, 
-               dstnodata=-9999,
-               overwrite = T,
-               crop_to_cutline=T, 
-               cutline = shpLoc,
-               rasLoc,
-               'clipped.tif')
-    }
-    
-    stack('clipped.tif')
-    
-    })
+  })
   
   unscaled <- eventReactive(input$goButton,{
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Formatting selection", value = 0.15)
-    
+    req(climClip())
     clip <- climClip()
-    
+  
     clipMat <- as.matrix(clip)
     cell <- 1:ncell(clip)
     
@@ -203,6 +236,7 @@ server <- shinyServer(function(input, output, session) {
       
       NULL
     }else{
+      file.remove('clipped.tif')
       roiDF
     }
   })
@@ -216,17 +250,24 @@ server <- shinyServer(function(input, output, session) {
     
     unsc <- unscaled()
     
-    croppedStack <- cbind(unsc[,1:3],scale(unsc[,4:10]))
+    climRaw <- unsc[,4:10]
+    cM <- colMeans2(climRaw)
+    cSd <- colSds(climRaw)
+    zscore <- function(x){
+      (climRaw[,x] - cM[x])/cSd[x]
+    }
     
-    croppedStack[,4] <- croppedStack[,4]*input$wtMAT
-    croppedStack[,5] <- croppedStack[,5]*input$wtDiurnal
-    croppedStack[,6] <- croppedStack[,6]*input$wtTSeason
-    croppedStack[,7] <- croppedStack[,7]*input$wtTWet
-    croppedStack[,8] <- croppedStack[,8]*input$wtMAP
-    croppedStack[,9] <- croppedStack[,9]*input$wtPSeason
-    croppedStack[,10] <- croppedStack[,10]*input$wtPWarm
+    unsc[,4:10] <- do.call(cbind, lapply(FUN = zscore, X = 1:7))
     
-    croppedStack
+    unsc[,"MAT"] <- unsc[,"MAT"]*input$wtMAT
+    unsc[,"DiurnalRange"] <- unsc[,"DiurnalRange"]*input$wtDiurnal
+    unsc[,"TSeasonality"] <- unsc[,"TSeasonality"]*input$wtTSeason
+    unsc[,"TWettestQtr"] <- unsc[,"TWettestQtr"]*input$wtTWet
+    unsc[,"MAP"] <- unsc[,"MAP"]*input$wtMAP
+    unsc[,"PSeasonality"] <- unsc[,"PSeasonality"]*input$wtPSeason
+    unsc[,"PWarmestQtr"] <- unsc[,"PWarmestQtr"]*input$wtPWarm
+    
+    unsc
 
   })
   
@@ -324,9 +365,9 @@ server <- shinyServer(function(input, output, session) {
     
     medoid.print <- data.frame(paste("Center", 1:nrow(best.medoids)),subset(unscaled(), unscaled()[,1] %in% best.medoids$cell))
     colnames(medoid.print)[1] <- "Climate Center"
-    medoid.print$MAT <- medoid.print$MAT/10
-    medoid.print$DiurnalRange <- medoid.print$DiurnalRange/10
-    medoid.print$TWettestQtr <- medoid.print$TWettestQtr/10
+    medoid.print$MAT <- medoid.print$MAT
+    medoid.print$DiurnalRange <- medoid.print$DiurnalRange
+    medoid.print$TWettestQtr <- medoid.print$TWettestQtr
     
     medoid.sp <- SpatialPointsDataFrame(subset(medoid.print, select =c(x,y)), medoid.print)
     proj4string(medoid.sp) <- '+init=epsg:3857'
@@ -343,79 +384,130 @@ server <- shinyServer(function(input, output, session) {
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Mapping climate similarity", value = 0.6)
-
+    
     cropped.stack <- map.crop()
     extent.max <- max.find()
     best.medoids <- medoids()
-    medoid.print <- medprint()
     
     maps.clust.fun <- function(clim.vals){
-      col.dat <- clim.vals 
+      col.dat <- clim.vals
       
       clim.dist.df <- function(col){  #Euclidean distance function
         
         euc <- sqrt((cropped.stack[,4] - col.dat[col,4])^2 +
-                      (cropped.stack[,5] - col.dat[col,5])^2 + 
+                      (cropped.stack[,5] - col.dat[col,5])^2 +
                       (cropped.stack[,6] - col.dat[col,6])^2 +
                       (cropped.stack[,7] - col.dat[col,7])^2 +
-                      (cropped.stack[,8] - col.dat[col,8])^2 + 
+                      (cropped.stack[,8] - col.dat[col,8])^2 +
                       (cropped.stack[,9] - col.dat[col,9])^2 +
                       (cropped.stack[,10] - col.dat[col,10])^2)
         return(euc)
       }
       
-      
       euc.out <- do.call(cbind, lapply(FUN=clim.dist.df, X = 1:nrow(col.dat))) #Applying the distance function over the accessions
       colnames(euc.out) <- paste(1:nrow(col.dat))
       accession <- cbind(apply( euc.out, 1, which.min)) #Determining which accession is closest in climate space for a given cell
       clim.sim <- 1 - rowMins(euc.out)/extent.max
-    
-      out <- cbind(accession, clim.sim, cropped.stack[,1])
-      colnames(out)[1:3] <- c("accession", "clim.sim","cell")
+      
+      out <- cbind(accession, clim.sim)
+      colnames(out) <- c("accession", "clim.sim")
       return(out) #returning data frame of relevant data
     }
     
-    map.vals <- maps.clust.fun(clim.vals = best.medoids) 
+    map.vals <- maps.clust.fun(clim.vals = best.medoids)
     map.vals
-  }) 
+  })
   
   click.list <- reactive({
     
     map.vals <- sim.calcs()
     cropped.stack <- map.crop()
     
-    if(is.null(input$leaf_click$lng) |
-       input$leaf_click$lng < -168 |
-       input$leaf_click$lng > -52 |
-       input$leaf_click$lat < 7 |
-       input$leaf_click$lat > 83
-    ){return()}else{
-      
-      click.xy <- SpatialPoints(coords = data.frame(input$leaf_click$lng, input$leaf_click$lat),
-                                proj4string=CRS('+init=epsg:4326'))
-      click.trans <- spTransform(click.xy, '+init=epsg:3857') 
-      
-      map.cell <- cellFromXY(climClip(), click.trans)
-    }
+    click.xy <- SpatialPoints(coords = data.frame(input$leaf_click$lng, input$leaf_click$lat),
+                              proj4string=CRS('+init=epsg:4326'))
+    click.trans <- spTransform(click.xy, '+init=epsg:3857') 
     
-    center <- subset(map.vals, map.vals[,3] == map.cell, select=c("accession","clim.sim"))
-    vals <- subset(unscaled(), unscaled()[,1] == map.cell, select=c("MAT","DiurnalRange","TSeasonality",
-                                                         "TWettestQtr","MAP","PSeasonality","PWarmestQtr"))
+    map.cell <- cellFromXY(climClip(), click.trans)
     
-    if(nrow(center) > 0){
+    cellFilter <- unscaled()[which(unscaled()[,'cell'] == map.cell), 'cell']
+    
+    if(length(cellFilter) == 1){
+      
+      center <- map.vals[cellFilter,] %>% t() %>% as.data.frame()
+      vals <- unscaled()[cellFilter,] %>% t() %>% as.data.frame() %>% select(-cell,-x, -y)
+      
       sub <- data.frame(center,vals)
       
       sub$clim.sim <- round(sub$clim.sim*100)
       
       colnames(sub)[1:2] <- c("Assignment","Climate Similarity")
       labeler <- function(x){
-        out <- paste("<b>", colnames(sub)[x], "</b>", ":", sub[,x], "<br>")
+        out <- paste0("<b>", colnames(sub)[x], "</b>", ": ", sub[,x], "<br>")
         return(out)
       }
       
       out <- do.call(rbind, lapply(FUN=labeler, X=1:ncol(sub)))
     }else{out <- NULL}
     out
+  })
+  
+  palettes <- reactive({
+    
+    req(medoids())
+    
+    palette.full <- c("#8B1117",
+                      "#29D32A",
+                      "#F743FB",
+                      "#03ADC3",
+                      "#F0A733",
+                      "#6F1D68",
+                      "#7B8BFA",
+                      "#188D57",
+                      "#1F3D46",
+                      "#FA5B93",
+                      "#C498C4",
+                      "#F8651F",
+                      "#4E5705",
+                      "#B7755E",
+                      "#283F85",
+                      "#E028B0",
+                      "#92C015",
+                      "#0196DB",
+                      "#A1AB60",
+                      "#DC9AF8",
+                      "#66BE9F",
+                      "#317313",
+                      "#B95D18",
+                      "#A27811",
+                      "#61410C",
+                      "#107585",
+                      "#9B005F",
+                      "#E92725",
+                      "#B62DC2",
+                      "#6ECC4B",
+                      "#F3606F",
+                      "#CCB437",
+                      "#622515",
+                      "#7A2C8F",
+                      "#98A008",
+                      "#4CCBC4",
+                      "#FF70B8",
+                      "#7C9FF7",
+                      "#393364",
+                      "#C64704",
+                      "#4F673D",
+                      "#A96AD3",
+                      "#CB533C",
+                      "#8ED14A",
+                      "#9FAEC1",
+                      "#C9A551",
+                      "#85D1A2",
+                      "#C6548A",
+                      "#524874",
+                      "#653A35")
+    
+    palette <- palette.full[1:nrow(medoids())]
+    
   })
   
   box.react <- eventReactive(input$goButton,{
@@ -436,60 +528,7 @@ server <- shinyServer(function(input, output, session) {
     req(box.react)
     medoid.print <- medprint()
     
-    if(nrow(medoid.print) <= 50){
-      palette.full <- c("#8B1117",
-                        "#29D32A",
-                        "#F743FB",
-                        "#03ADC3",
-                        "#F0A733",
-                        "#6F1D68",
-                        "#7B8BFA",
-                        "#188D57",
-                        "#1F3D46",
-                        "#FA5B93",
-                        "#C498C4",
-                        "#F8651F",
-                        "#4E5705",
-                        "#B7755E",
-                        "#283F85",
-                        "#E028B0",
-                        "#92C015",
-                        "#0196DB",
-                        "#A1AB60",
-                        "#DC9AF8",
-                        "#66BE9F",
-                        "#317313",
-                        "#B95D18",
-                        "#A27811",
-                        "#61410C",
-                        "#107585",
-                        "#9B005F",
-                        "#E92725",
-                        "#B62DC2",
-                        "#6ECC4B",
-                        "#F3606F",
-                        "#CCB437",
-                        "#622515",
-                        "#7A2C8F",
-                        "#98A008",
-                        "#4CCBC4",
-                        "#FF70B8",
-                        "#7C9FF7",
-                        "#393364",
-                        "#C64704",
-                        "#4F673D",
-                        "#A96AD3",
-                        "#CB533C",
-                        "#8ED14A",
-                        "#9FAEC1",
-                        "#C9A551",
-                        "#85D1A2",
-                        "#C6548A",
-                        "#524874",
-                        "#653A35")
-
-      palette <- palette.full[1:nrow(medoid.print)]
-    }
+    palette <- palettes()
 
     if(nrow(medoid.print) > 25){
       cols <- 2
@@ -534,8 +573,8 @@ server <- shinyServer(function(input, output, session) {
     clim.ras <- leaf.template
     bound.ras <- leaf.template
     
-    values(clim.ras)[map.vals[,3]] <- round(map.vals[,2]*100)
-    values(bound.ras)[map.vals[,3]] <- as.integer(map.vals[,1])
+    values(clim.ras)[cropped.stack[,'cell']] <- round(map.vals[,'clim.sim']*100)
+    values(bound.ras)[cropped.stack[,'cell']] <- as.integer(map.vals[,'accession'])
     
     dataType(clim.ras) <- "INT1U"
     dataType(bound.ras) <- "INT1U"
@@ -544,7 +583,7 @@ server <- shinyServer(function(input, output, session) {
     
   })
   
-  palettes <- eventReactive(input$goButton,{
+  rasterPals <- eventReactive(input$goButton,{
     cropped.stack <- map.crop()
     extent.max <- max.find()
     best.medoids <- medoids()
@@ -555,67 +594,12 @@ server <- shinyServer(function(input, output, session) {
     clim.ras <- rasStack()[[1]]
     bound.ras <- rasStack()[[2]]
     
-    if(nrow(medoid.print) <= 50){
-      palette.full <- c("#8B1117",
-                        "#29D32A",
-                        "#F743FB",
-                        "#03ADC3",
-                        "#F0A733",
-                        "#6F1D68",
-                        "#7B8BFA",
-                        "#188D57",
-                        "#1F3D46",
-                        "#FA5B93",
-                        "#C498C4",
-                        "#F8651F",
-                        "#4E5705",
-                        "#B7755E",
-                        "#283F85",
-                        "#E028B0",
-                        "#92C015",
-                        "#0196DB",
-                        "#A1AB60",
-                        "#DC9AF8",
-                        "#66BE9F",
-                        "#317313",
-                        "#B95D18",
-                        "#A27811",
-                        "#61410C",
-                        "#107585",
-                        "#9B005F",
-                        "#E92725",
-                        "#B62DC2",
-                        "#6ECC4B",
-                        "#F3606F",
-                        "#CCB437",
-                        "#622515",
-                        "#7A2C8F",
-                        "#98A008",
-                        "#4CCBC4",
-                        "#FF70B8",
-                        "#7C9FF7",
-                        "#393364",
-                        "#C64704",
-                        "#4F673D",
-                        "#A96AD3",
-                        "#CB533C",
-                        "#8ED14A",
-                        "#9FAEC1",
-                        "#C9A551",
-                        "#85D1A2",
-                        "#C6548A",
-                        "#524874",
-                        "#653A35")
-      
-      palette <- palette.full[1:nrow(medoid.print)]
-    }
-    
     grays <- withProgress(value=0.8, message="Assigning Aesthetics",gray.colors(n=10, start = 1, end = 0, alpha = NULL))
     
     sim.pal <- withProgress(value=0.90, message="Assigning Aesthetics",colorNumeric(grays, minValue(clim.ras):maxValue(clim.ras), 
                                                                                     na.color = 'transparent'))
     
-    ras.zone.pal <- withProgress(value=0.95, message="Assigning Aesthetics",colorFactor(palette, 
+    ras.zone.pal <- withProgress(value=0.95, message="Assigning Aesthetics",colorFactor(palettes(), 
                                                                                         domain=factor(1:nrow(medoid.print)),
                                                                                         na.color = 'transparent'))
     c(sim.pal, ras.zone.pal)
@@ -635,8 +619,8 @@ server <- shinyServer(function(input, output, session) {
     medoid.print <- isolate(medprint())
     clim.ras <- isolate(rasStack()[[1]])
     bound.ras <- isolate(rasStack()[[2]])
-    sim.pal <- isolate(palettes()[[1]])
-    ras.zone.pal <- isolate(palettes()[[2]])
+    sim.pal <- isolate(rasterPals()[[1]])
+    ras.zone.pal <- isolate(rasterPals()[[2]])
     
     progress <- shiny::Progress$new()
     on.exit(progress$close())
@@ -653,9 +637,12 @@ server <- shinyServer(function(input, output, session) {
       clearImages() %>%
       clearControls() %>%
       clearShapes() %>%
-      addCircleMarkers(data=medoid.print, lng= ~x, lat =~y, radius=4, color="black", group="Overalys") %>%
-      addCircleMarkers(data=medoid.print, lng= ~x, lat =~y, radius=3, color="white", 
-                       fillOpacity = 1,  group="Overalys", label=~medoid.print[,1]) %>%
+      addCircleMarkers(data=medoid.print, lng= ~x, lat =~y, 
+                       radius=6, color='white',fillOpacity = 1, stroke = F,
+                       group="Overlays", label=~medoid.print[,1]) %>%
+      addCircleMarkers(data=medoid.print, lng= ~x, lat =~y,
+                       radius=4, color= palettes(),fillOpacity = 1, stroke = F,
+                       group="Overlays", label=~medoid.print[,1] ) %>%
       addRasterImage(clim.ras, colors = sim.pal, opacity = 0.9, 
                      project=FALSE, maxBytes = 8 * 1024 * 1024, group="Overalys") %>%
       addRasterImage(bound.ras, colors = ras.zone.pal, opacity = 0.45,
@@ -695,10 +682,6 @@ server <- shinyServer(function(input, output, session) {
     raw
   })
   
-  observeEvent(input$goButton, {
-    file.remove('clipped.tif')
-  })
-  
   output$downloadData <- downloadHandler(
     
     filename = paste("climate_partitioning_data_",Sys.Date(),".zip", sep=""),
@@ -735,61 +718,6 @@ server <- shinyServer(function(input, output, session) {
       writeRaster(projClim.ras, "simval.tif", format="GTiff", overwrite=TRUE, datatype = "INT1U", NAflag = 0)
       writeRaster(projBound.ras,"center.assignment.tif", format="GTiff", overwrite=TRUE, datatype = "INT1U", NAflag = 0)
       
-      if(nrow(medoid.print) <= 50){
-        palette.full <- c("#8B1117",
-                          "#29D32A",
-                          "#F743FB",
-                          "#03ADC3",
-                          "#F0A733",
-                          "#6F1D68",
-                          "#7B8BFA",
-                          "#188D57",
-                          "#1F3D46",
-                          "#FA5B93",
-                          "#C498C4",
-                          "#F8651F",
-                          "#4E5705",
-                          "#B7755E",
-                          "#283F85",
-                          "#E028B0",
-                          "#92C015",
-                          "#0196DB",
-                          "#A1AB60",
-                          "#DC9AF8",
-                          "#66BE9F",
-                          "#317313",
-                          "#B95D18",
-                          "#A27811",
-                          "#61410C",
-                          "#107585",
-                          "#9B005F",
-                          "#E92725",
-                          "#B62DC2",
-                          "#6ECC4B",
-                          "#F3606F",
-                          "#CCB437",
-                          "#622515",
-                          "#7A2C8F",
-                          "#98A008",
-                          "#4CCBC4",
-                          "#FF70B8",
-                          "#7C9FF7",
-                          "#393364",
-                          "#C64704",
-                          "#4F673D",
-                          "#A96AD3",
-                          "#CB533C",
-                          "#8ED14A",
-                          "#9FAEC1",
-                          "#C9A551",
-                          "#85D1A2",
-                          "#C6548A",
-                          "#524874",
-                          "#653A35")
-        
-        palette <- palette.full[1:nrow(medoid.print)]
-      }
-      
       if(nrow(medoid.print) > 25){
         cols <- 2
       }else{
@@ -799,7 +727,7 @@ server <- shinyServer(function(input, output, session) {
       box <- ggplot(data=box.react(), aes(x=accession, y=value, fill=accession))+
         theme_bw()+
         geom_boxplot()+
-        scale_fill_manual(values=palette)+
+        scale_fill_manual(values=palettes())+
         guides(fill= guide_legend(title="Climate\nCenter\nAssignment", ncol= cols))+
         facet_wrap(~variable, scales= "free_y", ncol=1)+
         xlab("Climate Center Assignments")+
