@@ -405,11 +405,17 @@ server <- shinyServer(function(input, output, session) {
         return(euc)
       }
       
-      
       euc.out <- do.call(cbind, lapply(FUN=clim.dist.df, X = 1:nrow(col.dat))) #Applying the distance function over the accessions
       colnames(euc.out) <- paste(1:nrow(col.dat))
-      accession <- cbind(apply( euc.out, 1, which.min)) #Determining which accession is closest in climate space for a given cell
-      clim.sim <- 1 - rowMins(euc.out)/extent.max
+      minEuc <- rowMins(euc.out)
+      clim.sim <- 1 - minEuc/extent.max
+      
+      customMin <- function(x){
+        rw <- euc.out[x,]
+        which(rw == minEuc[x])
+      }
+      
+      accession <- do.call(rbind, lapply(FUN = customMin, X = 1:nrow(euc.out)))
       
       out <- cbind(accession, clim.sim, cropped.stack[,1])
       colnames(out)[1:3] <- c("accession", "clim.sim","cell")
