@@ -388,61 +388,69 @@ server <- shinyServer(function(input, output, session) {
     cropped.stack <- map.crop()
     extent.max <- max.find()
     best.medoids <- medoids()
+    medoid.print <- medprint()
     
     maps.clust.fun <- function(clim.vals){
-      col.dat <- clim.vals
+      col.dat <- clim.vals 
       
       clim.dist.df <- function(col){  #Euclidean distance function
         
         euc <- sqrt((cropped.stack[,4] - col.dat[col,4])^2 +
-                      (cropped.stack[,5] - col.dat[col,5])^2 +
+                      (cropped.stack[,5] - col.dat[col,5])^2 + 
                       (cropped.stack[,6] - col.dat[col,6])^2 +
                       (cropped.stack[,7] - col.dat[col,7])^2 +
-                      (cropped.stack[,8] - col.dat[col,8])^2 +
+                      (cropped.stack[,8] - col.dat[col,8])^2 + 
                       (cropped.stack[,9] - col.dat[col,9])^2 +
                       (cropped.stack[,10] - col.dat[col,10])^2)
         return(euc)
       }
+      
       
       euc.out <- do.call(cbind, lapply(FUN=clim.dist.df, X = 1:nrow(col.dat))) #Applying the distance function over the accessions
       colnames(euc.out) <- paste(1:nrow(col.dat))
       accession <- cbind(apply( euc.out, 1, which.min)) #Determining which accession is closest in climate space for a given cell
       clim.sim <- 1 - rowMins(euc.out)/extent.max
       
-      out <- cbind(accession, clim.sim)
-      colnames(out) <- c("accession", "clim.sim")
+      out <- cbind(accession, clim.sim, cropped.stack[,1])
+      colnames(out)[1:3] <- c("accession", "clim.sim","cell")
       return(out) #returning data frame of relevant data
     }
     
-    map.vals <- maps.clust.fun(clim.vals = best.medoids)
+    map.vals <- maps.clust.fun(clim.vals = best.medoids) 
     map.vals
-  })
+  }) 
   
   click.list <- reactive({
     
     map.vals <- sim.calcs()
     cropped.stack <- map.crop()
     
-    click.xy <- SpatialPoints(coords = data.frame(input$leaf_click$lng, input$leaf_click$lat),
-                              proj4string=CRS('+init=epsg:4326'))
-    click.trans <- spTransform(click.xy, '+init=epsg:3857') 
-    
-    map.cell <- cellFromXY(climClip(), click.trans)
-    
-    cellFilter <- unscaled()[which(unscaled()[,'cell'] == map.cell), 'cell']
-    
-    if(length(cellFilter) == 1){
-      browser()
-      center <- data.frame(t(map.vals[cellFilter, ])) # %>% t() %>% as.data.frame()
-      vals <- data.frame(t(unscaled()[cellFilter, ]))[, !(colnames(unscaled()) %in% c('cell','x','y'))] #  %>% t() %>% as.data.frame() %>% select(-cell,-x, -y)
+    if(is.null(input$leaf_click$lng) |
+       input$leaf_click$lng < -168 |
+       input$leaf_click$lng > -52 |
+       input$leaf_click$lat < 7 |
+       input$leaf_click$lat > 83
+    ){return()}else{
       
+      click.xy <- SpatialPoints(coords = data.frame(input$leaf_click$lng, input$leaf_click$lat),
+                                proj4string=CRS('+init=epsg:4326'))
+      click.trans <- spTransform(click.xy, '+init=epsg:3857') 
+      
+      map.cell <- cellFromXY(climClip(), click.trans)
+    }
+    
+    center <- subset(map.vals, map.vals[,3] == map.cell, select=c("accession","clim.sim"))
+    vals <- subset(unscaled(), unscaled()[,1] == map.cell, select=c("MAT","DiurnalRange","TSeasonality",
+                                                                    "TWettestQtr","MAP","PSeasonality","PWarmestQtr"))
+    
+    if(nrow(center) > 0){
       sub <- data.frame(center,vals)
       
       sub$clim.sim <- round(sub$clim.sim*100)
       
       colnames(sub)[1:2] <- c("Assignment","Climate Similarity")
       labeler <- function(x){
-        out <- paste0("<b>", colnames(sub)[x], "</b>", ": ", sub[,x], "<br>")
+        out <- paste("<b>", colnames(sub)[x], "</b>", ":", sub[,x], "<br>")
         return(out)
       }
       
