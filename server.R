@@ -432,9 +432,9 @@ server <- shinyServer(function(input, output, session) {
     cellFilter <- unscaled()[which(unscaled()[,'cell'] == map.cell), 'cell']
     
     if(length(cellFilter) == 1){
-      
-      center <- map.vals[cellFilter,] %>% t() %>% as.data.frame()
-      vals <- unscaled()[cellFilter,] %>% t() %>% as.data.frame() %>% select(-cell,-x, -y)
+      browser()
+      center <- data.frame(t(map.vals[cellFilter, ])) # %>% t() %>% as.data.frame()
+      vals <- data.frame(t(unscaled()[cellFilter, ]))[, !(colnames(unscaled()) %in% c('cell','x','y'))] #  %>% t() %>% as.data.frame() %>% select(-cell,-x, -y)
       
       sub <- data.frame(center,vals)
       
