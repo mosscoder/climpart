@@ -61,7 +61,7 @@ ui <- fluidPage(
                    
                    downloadButton('downloadData', 'Download Data', style = ' width: 100%; margin: 2px;'),
                    tooltip(refId ='downloadData',
-                           "Click to download analysis products (opens a new tab). Includes: raster overlays, climate center data, and boxplot assignment climate summaries."),
+                           "Click to download analysis products (opens a new tab). Includes: raster overlays, climate center data, and within-assignment distribution boxplots."),
                    hr(),
                    
                    actionButton('moreInfo', label = HTML("<font size = 2><b>Contact Info & Disclaimer</b></font>")),
