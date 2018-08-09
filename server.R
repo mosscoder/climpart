@@ -259,13 +259,13 @@ server <- shinyServer(function(input, output, session) {
     
     unsc[,4:10] <- do.call(cbind, lapply(FUN = zscore, X = 1:7))
     
-    unsc[,"MAT"] <- unsc[,"MAT"]*input$wtMAT
-    unsc[,"DiurnalRange"] <- unsc[,"DiurnalRange"]*input$wtDiurnal
-    unsc[,"TSeasonality"] <- unsc[,"TSeasonality"]*input$wtTSeason
-    unsc[,"TWettestQtr"] <- unsc[,"TWettestQtr"]*input$wtTWet
-    unsc[,"MAP"] <- unsc[,"MAP"]*input$wtMAP
-    unsc[,"PSeasonality"] <- unsc[,"PSeasonality"]*input$wtPSeason
-    unsc[,"PWarmestQtr"] <- unsc[,"PWarmestQtr"]*input$wtPWarm
+    unsc[,"MAT"] <- unsc[,"MAT"]*(input$wtMAT+1e-6)
+    unsc[,"DiurnalRange"] <- unsc[,"DiurnalRange"]*(input$wtDiurnal+1e-6)
+    unsc[,"TSeasonality"] <- unsc[,"TSeasonality"]*(input$wtTSeason+1e-6)
+    unsc[,"TWettestQtr"] <- unsc[,"TWettestQtr"]*(input$wtTWet+1e-6)
+    unsc[,"MAP"] <- unsc[,"MAP"]*(input$wtMAP+1e-6)
+    unsc[,"PSeasonality"] <- unsc[,"PSeasonality"]*(input$wtPSeason+1e-6)
+    unsc[,"PWarmestQtr"] <- unsc[,"PWarmestQtr"]*(input$wtPWarm+1e-6)
     
     unsc
 
@@ -320,10 +320,14 @@ server <- shinyServer(function(input, output, session) {
     cropped.stack <- map.crop()
     extent.max <- max.find()
     
-    species.centers <- MiniBatchKmeans(data = cropped.stack[,4:10],
-                                       clusters = input$cluster.num,
-                                       batch_size = 1000,
-                                       max_iters = 1e9)$centroids
+    species.centers <- kmeans(x = cropped.stack[,4:10], 
+                 centers= input$cluster.num,
+                 iter.max = 1e9)$centers
+  
+    # species.centers <- MiniBatchKmeans(data = cropped.stack[,4:10],
+    #                                    clusters = input$cluster.num,
+    #                                    batch_size = 1000,
+    #                                    max_iters = 1e9)$centroids
     
     euc.dist <- function(full.df, med.df, med){
       
