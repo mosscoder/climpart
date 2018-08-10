@@ -320,15 +320,19 @@ server <- shinyServer(function(input, output, session) {
     cropped.stack <- map.crop()
     extent.max <- max.find()
     
-    species.centers <- kmeans(x = cropped.stack[,4:10], 
-                 centers= input$cluster.num,
-                 iter.max = 1e9)$centers
-  
-    # species.centers <- MiniBatchKmeans(data = cropped.stack[,4:10],
-    #                                    clusters = input$cluster.num,
-    #                                    batch_size = 1000,
-    #                                    max_iters = 1e9)$centroids
     
+    qtTest <- 0
+    
+    while(qtTest == 0){
+      gc()
+      kms <- kmeans(x = cropped.stack[,4:10], 
+                    centers= input$cluster.num,
+                    iter.max = 1e9)
+      if(kms$ifault != 4) qtTest <- 1
+    }
+    
+    species.centers <-kms$centers
+
     euc.dist <- function(full.df, med.df, med){
       
       euc <- sqrt((full.df[,4] - med.df[med,1])^2 + 
