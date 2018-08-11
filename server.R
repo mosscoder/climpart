@@ -312,7 +312,8 @@ server <- shinyServer(function(input, output, session) {
   }) 
   
   medoids <- eventReactive(input$goButton,{
-    set.seed(123)
+    seedNum <- 123
+    set.seed(seedNum)
     progress <- shiny::Progress$new()
     on.exit(progress$close())
     progress$set(message = "Clustering user extent", value = 0.4)
@@ -321,14 +322,16 @@ server <- shinyServer(function(input, output, session) {
     extent.max <- max.find()
     
     
-    qtTest <- 0
+    attempts <- 0
     
-    while(qtTest == 0){
+    while(attempts <= 5 ){
       gc()
+      if(attempts > 0) set.seed(seedNum + attempts)
       kms <- kmeans(x = cropped.stack[,4:10], 
                     centers= input$cluster.num,
                     iter.max = 1e9)
-      if(kms$ifault != 4) qtTest <- 1
+      if(kms$ifault != 4) break
+      attempts <- attempts + 1
     }
     
     species.centers <-kms$centers
@@ -666,11 +669,11 @@ server <- shinyServer(function(input, output, session) {
                        radius=4, color= palettes(),fillOpacity = 1, stroke = F,
                        group="Overlays", label=~medoid.print[,1] ) %>%
       addRasterImage(clim.ras, colors = sim.pal, opacity = 0.9, 
-                     project=FALSE, maxBytes = 8 * 1024 * 1024, group="Overalys") %>%
+                     project=FALSE, maxBytes = 8 * 1024 * 1024, group="Overlays") %>%
       addRasterImage(bound.ras, colors = ras.zone.pal, opacity = 0.45,
-                     project=FALSE, maxBytes = 8 * 1024 * 1024, group="Overalys") %>%
+                     project=FALSE, maxBytes = 8 * 1024 * 1024, group="Overlays") %>%
       addLayersControl(baseGroups = c("Light Basemap", "Terrain"),
-                       overlayGroups = c("Overalys"),
+                       overlayGroups = c("Overlays"),
                        options = layersControlOptions(collapsed = F),
                        position=ifelse(nrow(medoid.print) > 30, "topleft", "topright")) %>%
       addLegend("topright",pal = ras.zone.pal,
