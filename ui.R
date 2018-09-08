@@ -107,7 +107,10 @@ ui <- fluidPage(
                                                                          "PWarmestQtr" = "PWarmestQtr"),
                                                           selected = "PSeasonality"))),
                                    plotOutput("boxPlot", height=650) %>% withSpinner( size = 3)),
-                          tabPanel("Background and Use", id="background", textOutput('instruct')),
+                          tabPanel("Background and Use",id = "background",
+                            HTML('<p align="center"><iframe width="750px" height="500px" src="https://www.youtube.com/embed/9K5Vg70o1rc" frameborder="10" allow="autoplay; encrypted-media" allowfullscreen></iframe></p>'),
+                            textOutput('instruct')
+                          ),
                           tabPanel("Run Offline", id="offline",
                                    tags$iframe(src='https://rawgit.com/mosscoder/climpart/master/offlineInstructions.html',
                                                width = "100%", height = "1000px", style="border:0"))
