@@ -6,7 +6,7 @@ ui <- fluidPage(
                  
                  fluidRow(
                    img(src="https://github.com/mosscoder/climpart/blob/master/cpnpp_logo.png?raw=true", height=81, width='100%'),
-                   img(src="https://github.com/mosscoder/climpart/blob/master/usgs.logo.png?raw=true", height=81, width='100%'),
+                   img(src="https://github.com/mosscoder/climpart/blob/master/usgs.log.png?raw=true", height=81, width='100%'),
                    
                    tags$div(id = 'selectDiv', selectInput("boundSelect", 
                                                           label = ("How would you like to define your area of interest?"), 
